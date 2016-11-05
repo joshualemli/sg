@@ -6,23 +6,23 @@
 var SG = (function(){
 
   //  HTML DOM ELEMENTS AND APIS
-
   var canvas; // canvas element
   var context; // canvas context
   var info; // output messages
 
   //  CONSTANTS AND GAME OPTIONS
-
+  var _UID = 0;
   var MM_PER_PIXEL = 10;
+  var BIN_DIMENSION = 100;
   var OPTIONS = {
     verbose:false
   };
-  
+
   //  SUB-MODULES
-
   var Create; // object creation module
+  var SpatialHash; // spatial location hash
 
-  //  HELPER FUNCTIONS
+  //  ***  HELPER FUNCTIONS  ***  //
   
   function _CL(msg) {if (Options.verbose) console.log(msg);}
 
@@ -31,7 +31,7 @@ var SG = (function(){
     context.canvas.height = canvas.offsetHeight;
   }
 
-  //  GAME MECHANICS
+  //  ***  GAME MECHANICS  ***  //
 
   var objects = {};
 
@@ -78,6 +78,33 @@ var SG = (function(){
 
     window.requestAnimationFrame(gameplay);
   }
+  
+  SpatialHash = (function(){
+
+    var bin = {};
+
+    function hash(a) {return Math.floor(a/BIN_DIMENSION);}
+    function retrieve(x,y,radius,maskUID) {
+    }
+    function insert(x,y,UID) {
+      var X = hash(x); var Y = hash(y);
+      if (bin[X])
+        if (bin[X][Y]) bin[X][Y].push(UID);
+        else bin[X][Y] = [UID];
+      else bin[x] = {Y:[UID]};
+    }
+    function remove(x,y,UID) {}
+    function transfer(xI,yI,xF,yF,UID) {}
+
+    return {
+      retrieve:retrieve,
+      insert:insert,
+      remove:remove,
+      transfer:transfer,
+      bin:function(){return bin}
+    };
+
+  })();
 
   Create = (function(){
 
@@ -89,6 +116,8 @@ var SG = (function(){
     var _BasicObject = function() {
       this.radius = 1; // "millimeters"
       this.age = 0; // <int> milliseconds
+      this.x = 0;
+      this.y = 0;
     };
     
     var Player = function() {
@@ -99,7 +128,7 @@ var SG = (function(){
     //  ***  CREATURES  ***  //
     var Creature = {};
     Creature._Creature = function() {_BasicObject.call(this);};
-    Extend(Creature._Creature,_BasicObject);
+    Extend.call(Creature._Creature,_BasicObject);
 
     Creature.Dog = function() {
       this.bark = 'woof!';
@@ -115,26 +144,28 @@ var SG = (function(){
     //  ***  GROWTHS  ***  //
     var Growth = {};
     Growth._Growth = function() {_BasicObject.call(this);};
-    Extend(Growth._Growth,_BasicObject);
+    Extend.call(Growth._Growth,_BasicObject);
 
     //  ***  ITEMS  ***  //
     var Item = {};
     Item._Item = function() {_BasicObject.call(this);};
     Extend(Item._Item,_BasicObject);
 
-    var _UID = 0;
     function make(category,type) {
       var _object;
       switch(category) {
+        case 'Player': _object = new Player(); break;
         case 'Creature': _object = new Creature[type](); break;
         case 'Growth': _object = new Growth[type](); break;
         case 'Item': _object = new Item[type](); break;
       }
       _object.uid =  ++_UID;
       objects[_object.uid] = _object;
+      SpatialHash.insert(_object.x,_object.y,_object.uid);
     }
 
     return {
+      player:function(){make('Player');},
       creature:function(a){make('Creature',a);},
       growth:function(a){make('Growth',a);},
       item:function(a){make('Item',a);}
@@ -148,11 +179,18 @@ var SG = (function(){
     context = canvas.getContext('2d');
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
+    
+    //  Make fake world for now...
+    (function(){
+      Create.player();
+    })();
+    
     window.requestAnimationFrame(gameplay);
   }
 
   return {
     init:init,
+    peak: {bin:function(){return SpatialHash.bin();}}
   };
 
 })();
