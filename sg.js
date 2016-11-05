@@ -5,15 +5,33 @@
 
 var SG = (function(){
 
-  var canvas;
-  var context;
+  //  HTML DOM ELEMENTS AND APIS
+
+  var canvas; // canvas element
+  var context; // canvas context
   var info; // output messages
+
+  //  CONSTANTS AND GAME OPTIONS
+
+  var MM_PER_PIXEL = 10;
+  var OPTIONS = {
+    verbose:false
+  };
+  
+  //  SUB-MODULES
+
   var Create; // object creation module
+
+  //  HELPER FUNCTIONS
+  
+  function _CL(msg) {if (Options.verbose) console.log(msg);}
 
   function resizeWindow() {
     context.canvas.width = canvas.offsetWidth;
     context.canvas.height = canvas.offsetHeight;
   }
+
+  //  GAME MECHANICS
 
   var objects = {};
 
@@ -39,7 +57,7 @@ var SG = (function(){
     game._framerate += dt;
 
     //  Gameplay
-    
+    for (var key in objects) objects[key].step(dt);
     
     //  Graphics
     context.clearRect(0,0,context.canvas.width,context.canvas.height);
@@ -61,31 +79,82 @@ var SG = (function(){
     window.requestAnimationFrame(gameplay);
   }
 
+  Create = (function(){
+
+    function Extend(source) {
+      for (var key in source.prototype) this.prototype[key] = source.prototype[key];
+      this.prototype.constructor = this;
+    }
+
+    var _BasicObject = function() {
+      this.radius = 1; // "millimeters"
+      this.age = 0; // <int> milliseconds
+    };
+    
+    var Player = function() {
+      _BasicObject.call(this);
+      this.level = 1;
+    };
+
+    //  ***  CREATURES  ***  //
+    var Creature = {};
+    Creature._Creature = function() {_BasicObject.call(this);};
+    Extend(Creature._Creature,_BasicObject);
+
+    Creature.Dog = function() {
+      this.bark = 'woof!';
+    };
+    Creature.Dog.prototype.step = function() {
+    };
+    
+    Creature.Labrador = function() {
+      Creature.Dog.call(this);
+    };
+    Extend.call(Creature.Labrador,Creature.Dog);
+
+    //  ***  GROWTHS  ***  //
+    var Growth = {};
+    Growth._Growth = function() {_BasicObject.call(this);};
+    Extend(Growth._Growth,_BasicObject);
+
+    //  ***  ITEMS  ***  //
+    var Item = {};
+    Item._Item = function() {_BasicObject.call(this);};
+    Extend(Item._Item,_BasicObject);
+
+    var _UID = 0;
+    function make(category,type) {
+      var _object;
+      switch(category) {
+        case 'Creature': _object = new Creature[type](); break;
+        case 'Growth': _object = new Growth[type](); break;
+        case 'Item': _object = new Item[type](); break;
+      }
+      _object.uid =  ++_UID;
+      objects[_object.uid] = _object;
+    }
+
+    return {
+      creature:function(a){make('Creature',a);},
+      growth:function(a){make('Growth',a);},
+      item:function(a){make('Item',a);}
+    };
+
+  })(); // end `Create` module
+
   function init() {
     info = document.getElementById('info');
     canvas = document.getElementById('canvas');
     context = canvas.getContext('2d');
     resizeWindow();
+    window.addEventListener('resize',resizeWindow);
     window.requestAnimationFrame(gameplay);
   }
 
-  Create = (function(){
-    var Creature = {};
-    var Growth = {};
-    var Item = {};
-    return {
-      creature:function(a){return new Creature[a]();},
-      growth:function(a){return new Growth[a]();},
-      item:function(a){return new Item[a]();},
-    };
-  })();
-
   return {
     init:init,
-    resizeWindow:resizeWindow
   };
 
 })();
 
 window.onload = SG.init;
-window.addEventListener('resize',SG.resizeWindow);
