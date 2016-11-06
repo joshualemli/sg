@@ -3,28 +3,43 @@
 //    Joshua A. Lemli
 //    2016
 
+/*
+http://sg-joshualemli886851.codeanyapp.com/index.html
+*/
+
 var SG = (function(){
 
   //  HTML DOM ELEMENTS AND APIS
   var canvas; // canvas element
   var context; // canvas context
   var info; // output messages
+  var xxxxxx;
 
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0;
   var MM_PER_PIXEL = 10;
   var BIN_DIMENSION = 100;
   var OPTIONS = {
-    verbose:false
+    binds: {
+      up:'ArrowUp',
+      down:'ArrowDown',
+      left:'ArrowLeft',
+      right:'ArrowRight',
+      mIncrease:'=',
+      mDecrease:'-',
+    },
+    verbose:true
   };
 
   //  SUB-MODULES
   var Create; // object creation module
-  var SpatialHash; // spatial location hash
+  var SpatialHash; // spatial culling module
+  var View; // information needed for graphics
+  var Input; // handle user keyboard & mouse input
 
   //  ***  HELPER FUNCTIONS  ***  //
   
-  function _CL(msg) {if (Options.verbose) console.log(msg);}
+  function _CL(msg) {if (OPTIONS.verbose) console.log(msg);}
 
   function resizeWindow() {
     context.canvas.width = canvas.offsetWidth;
@@ -56,13 +71,22 @@ var SG = (function(){
     game.date += dt;
     game._framerate += dt;
 
+    //  Input
+
     //  Gameplay
-    for (var key in objects) objects[key].step(dt);
+    for (var uid in objects) objects[uid].step(dt);
     
     //  Graphics
-    context.clearRect(0,0,context.canvas.width,context.canvas.height);
+    context.transform(1,0,0,1,0,0);
     context.fillStyle = '#00FF00';
+    context.strokeStyle = '#FF0000';
     context.fillRect(100,100,100,100);
+    for (uid in objects) {
+      context.beginPath();
+      context.arc(objects[uid].x,objects[uid].y,50,0,2*Math.PI);
+      context.stroke();
+    }
+//    View.apply.world();
 
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
@@ -78,7 +102,38 @@ var SG = (function(){
 
     window.requestAnimationFrame(gameplay);
   }
+
+  //  ***  MODULES  ***  //
   
+  Input = (function(){
+    var keyState = {};
+    function keyDown(event) {if (!keyState[event.key]) keyState[event.key] = true;}
+    function keyUp(event) {if (keyState[event.key]) keyState[event.key] = false;}
+    window.addEventListener('keydown',keyDown);
+    window.addEventListener('keyup',keyUp);
+    return {
+      all:function(){return keyState;},
+      getKeyState:function(a){return keyState[a];}
+    };
+  })();
+
+  View = (function(){
+    var x = 0;
+    var y = 0;
+    var m = 1; // magnification
+    var mMax = 100;
+    var mMin = 0.1;
+    function applyWorldTransform() {
+      context.transform(1,0,0,1,100,0);
+    }
+    return {
+      apply: {
+        world:applyWorldTransform
+      },
+    };
+  })();
+
+
   SpatialHash = (function(){
 
     var bin = {};
@@ -86,25 +141,44 @@ var SG = (function(){
     function hash(a) {return Math.floor(a/BIN_DIMENSION);}
     function retrieve(x,y,radius,maskUID) {
     }
-    function insert(x,y,UID) {
-      var X = hash(x); var Y = hash(y);
+    function insert(X,Y,UID) {
       if (bin[X])
         if (bin[X][Y]) bin[X][Y].push(UID);
         else bin[X][Y] = [UID];
-      else bin[x] = {Y:[UID]};
+      else {
+        bin[X] = {};
+        bin[X][Y] = [UID];
+      }
     }
-    function remove(x,y,UID) {}
-    function transfer(xI,yI,xF,yF,UID) {}
-
+    function remove(X,Y,UID) {
+      var targetBin = bin[X][Y];
+      for (var i = targetBin.length; i--;) if (targetBin[i]===UID) targetBin.splice(i,1);
+      if (targetBin.length === 0) delete bin[X][Y];
+      if (Object.keys(bin[X]).length === 0) delete bin[X];
+    }
+    function transfer(xI,yI,xF,yF,UID) {
+      var Xi = hash(xI); var Yi = hash(yI);
+      var Xf = hash(xF); var Yf = hash(yF);
+      if (Xi !== Xf || Yi !== Yf) {
+        remove(Xi,Yi,UID);
+        insert(Xf,Yf,UID);
+      }
+    }
+  
     return {
       retrieve:retrieve,
-      insert:insert,
-      remove:remove,
+      insert:function(x,y,UID) {
+        var X = hash(x); var Y = hash(y);
+        insert(X,Y,UID);
+      },
+      remove:function(x,y,UID) {
+        var X = hash(x); var Y = hash(y);
+      },
       transfer:transfer,
       bin:function(){return bin}
     };
 
-  })();
+  })(); // end `SpatialHash` module
 
   Create = (function(){
 
@@ -119,11 +193,14 @@ var SG = (function(){
       this.x = 0;
       this.y = 0;
     };
+    _BasicObject.prototype.step = function() {};
     
     var Player = function() {
       _BasicObject.call(this);
       this.level = 1;
+      this.radius = 10;
     };
+    Extend.call(Player,_BasicObject);
 
     //  ***  CREATURES  ***  //
     var Creature = {};
@@ -132,6 +209,7 @@ var SG = (function(){
 
     Creature.Dog = function() {
       this.bark = 'woof!';
+      this.radius = 5;
     };
     Creature.Dog.prototype.step = function() {
     };
@@ -149,9 +227,9 @@ var SG = (function(){
     //  ***  ITEMS  ***  //
     var Item = {};
     Item._Item = function() {_BasicObject.call(this);};
-    Extend(Item._Item,_BasicObject);
+    Extend.call(Item._Item,_BasicObject);
 
-    function make(category,type) {
+    function make(category,type,x,y) {
       var _object;
       switch(category) {
         case 'Player': _object = new Player(); break;
@@ -160,15 +238,17 @@ var SG = (function(){
         case 'Item': _object = new Item[type](); break;
       }
       _object.uid =  ++_UID;
+      _object.x = x;
+      _object.y = y;
       objects[_object.uid] = _object;
       SpatialHash.insert(_object.x,_object.y,_object.uid);
     }
 
     return {
-      player:function(){make('Player');},
-      creature:function(a){make('Creature',a);},
-      growth:function(a){make('Growth',a);},
-      item:function(a){make('Item',a);}
+      player:function(x,y){make('Player',null,x,y);},
+      creature:function(a,x,y){make('Creature',a,x,y);},
+      growth:function(a,x,y){make('Growth',a,x,y);},
+      item:function(a,x,y){make('Item',a,x,y);}
     };
 
   })(); // end `Create` module
@@ -178,19 +258,22 @@ var SG = (function(){
     canvas = document.getElementById('canvas');
     context = canvas.getContext('2d');
     resizeWindow();
+    context.save();
     window.addEventListener('resize',resizeWindow);
-    
+
     //  Make fake world for now...
-    (function(){
-      Create.player();
-    })();
-    
+    Create.player(0,0);
+    Create.creature('Dog',200,200);
+
     window.requestAnimationFrame(gameplay);
   }
 
   return {
     init:init,
-    peak: {bin:function(){return SpatialHash.bin();}}
+    peak: {
+      bin:function(){return SpatialHash.bin();},
+      Input:Input
+    }
   };
 
 })();
