@@ -13,7 +13,11 @@ var SG = (function(){
   var canvas; // canvas element
   var context; // canvas context
   var info; // output messages
-  var xxxxxx;
+  var controls;
+  var sg, gameplay;
+  var belt, beltMode;
+  var backpack, backpackMode;
+  var mobiledevice, mobiledeviceMode;
 
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0;
@@ -51,6 +55,7 @@ var SG = (function(){
   var objects = {};
 
   var game = {
+    mode: 'gameplay',
     iteration: 0, // persistent loop counter
     date: 0, // milliseconds
     playtime: 0, // milliseconds
@@ -62,7 +67,38 @@ var SG = (function(){
     _framecount: 0, // frames in `_framerate`
   };
 
-  function gameplay(_t) {
+  function loopByMode() {
+    switch(game.mode) {
+      case 'gameplay': window.requestAnimationFrame(gameplay); break;
+      case 'belt': window.requestAnimationFrame(beltMode); break;
+      case 'backpack': window.requestAnimationFrame(backpackMode); break;
+      case 'mobiledevice': window.requestAnimationFrame(mobiledeviceMode); break;
+      default: return false;
+    } return true;
+  }
+
+  beltMode = function() {
+    context.setTransform(1,0,0,1,0,0);
+    context.clearRect(0,0,context.canvas.width,context.canvas.height);
+    context.fillStyle = '#AAFF00';
+    context.fillRect(400,500,100,100);
+    loopByMode();
+  }
+  backpackMode = function() {
+    context.setTransform(1,0,0,1,0,0);
+    context.clearRect(0,0,context.canvas.width,context.canvas.height);
+    context.fillStyle = '#FF0000';
+    context.fillRect(400,500,100,200);
+    loopByMode();
+  }
+  mobiledeviceMode = function() {
+    context.setTransform(1,0,0,1,0,0);
+    context.clearRect(0,0,context.canvas.width,context.canvas.height);
+    context.fillStyle = '#0000FF';
+    context.fillRect(400,500,20,100);
+    loopByMode();
+  }
+  gameplay = function(_t) {
     var loopStartTime = performance.now();
     game.iteration += 1;
     game._framecount += 1;
@@ -70,12 +106,9 @@ var SG = (function(){
     game.playtime = _t;
     game.date += dt;
     game._framerate += dt;
-
     //  Input
-
     //  Gameplay
     for (var uid in objects) objects[uid].step(dt);
-    
     //  Graphics
     context.transform(1,0,0,1,0,0);
     context.fillStyle = '#00FF00';
@@ -86,8 +119,6 @@ var SG = (function(){
       context.arc(objects[uid].x,objects[uid].y,50,0,2*Math.PI);
       context.stroke();
     }
-//    View.apply.world();
-
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
     if (game._framecount === 30) {
@@ -96,12 +127,13 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg = 'world age: ' + game.dateInSeconds() + 's<br>' + game.iteration + ' loops<br>' + game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
+      var infoMsg = 'world age: ' + game.dateInSeconds() + 's<br>' + game.iteration + ' loops<br>' +
+                    game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
       info.innerHTML = infoMsg;
     }
-
-    window.requestAnimationFrame(gameplay);
+    loopByMode();
   }
+  
 
   //  ***  MODULES  ***  //
   
@@ -116,23 +148,6 @@ var SG = (function(){
       getKeyState:function(a){return keyState[a];}
     };
   })();
-
-  View = (function(){
-    var x = 0;
-    var y = 0;
-    var m = 1; // magnification
-    var mMax = 100;
-    var mMin = 0.1;
-    function applyWorldTransform() {
-      context.transform(1,0,0,1,100,0);
-    }
-    return {
-      apply: {
-        world:applyWorldTransform
-      },
-    };
-  })();
-
 
   SpatialHash = (function(){
 
@@ -254,12 +269,21 @@ var SG = (function(){
   })(); // end `Create` module
 
   function init() {
+    controls = document.getElementById('controls');
+    sg = document.getElementById('sg');
+    belt = document.getElementById('belt');
+    backpack = document.getElementById('backpack');
+    mobiledevice = document.getElementById('mobiledevice');
     info = document.getElementById('info');
     canvas = document.getElementById('canvas');
     context = canvas.getContext('2d');
     resizeWindow();
-    context.save();
     window.addEventListener('resize',resizeWindow);
+
+    sg.addEventListener('click',function(){game.mode = 'sg';});
+    belt.addEventListener('click',function(){game.mode = 'belt';});
+    backpack.addEventListener('click',function(){game.mode = 'backpack';});
+    mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
 
     //  Make fake world for now...
     Create.player(0,0);
