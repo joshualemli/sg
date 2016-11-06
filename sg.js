@@ -223,12 +223,12 @@ var SG = (function(){
     Extend.call(Creature._Creature,_BasicObject);
 
     Creature.Dog = function() {
+      Creature._Creature.call(this);
       this.bark = 'woof!';
       this.radius = 5;
     };
-    Creature.Dog.prototype.step = function() {
-    };
-    
+    Extend.call(Creature.Dog,Creature._Creature);
+
     Creature.Labrador = function() {
       Creature.Dog.call(this);
     };
@@ -294,10 +294,6 @@ var SG = (function(){
 
   return {
     init:init,
-    peak: {
-      bin:function(){return SpatialHash.bin();},
-      Input:Input
-    }
   };
 
 })();
