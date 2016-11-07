@@ -107,17 +107,17 @@ var SG = (function(){
     //  Gameplay
     for (var uid in objects) objects[uid].step(dt);
     //  Graphics
-    
     context.setTransform(1,0,0,-1,context.canvas.width/2,context.canvas.height/2);
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
     context.fillRect(100,100,100,100);
     for (uid in objects) {
       var target = objects[uid];
-      
-      context.beginPath();
-      context.arc(objects[uid].x,objects[uid].y,50,0,2*Math.PI);
-      context.fill();
+      if (1){ //is in view?
+        context.beginPath();
+        context.arc(target.x,target.y,target.radius,0,2*Math.PI);
+        context.fill();
+      }
     }
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
@@ -139,13 +139,26 @@ var SG = (function(){
   
   Input = (function(){
     var keyState = {};
+    var clickData = {};
     function keyDown(event) {if (!keyState[event.key]) keyState[event.key] = true;}
     function keyUp(event) {if (keyState[event.key]) keyState[event.key] = false;}
+    function registerClick(event) {
+      clickData.x = event.clientX;
+      clickData.y = event.clientY;
+    }
+    function getClick(clearData) {
+      if (clearData) {
+        return {x:_x,y:_y};
+      }
+      return {x:clickData.x,y:clickData.y}
+    }
     window.addEventListener('keydown',keyDown);
     window.addEventListener('keyup',keyUp);
+    window.addEventListener('click',registerClick);
     return {
       all:function(){return keyState;},
-      getKeyState:function(a){return keyState[a];}
+      getKeyState:function(a){return keyState[a];},
+      getClick:getClick
     };
   })();
 
