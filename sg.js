@@ -3,10 +3,6 @@
 //    Joshua A. Lemli
 //    2016
 
-/*
-http://sg-joshualemli886851.codeanyapp.com/index.html
-*/
-
 var SG = (function(){
 
   //  HTML DOM ELEMENTS AND APIS
@@ -19,10 +15,9 @@ var SG = (function(){
   var backpack, backpackMode;
   var mobiledevice, mobiledeviceMode;
 
+  var _UID = 0; // last UID created
+
   //  CONSTANTS AND GAME OPTIONS
-  var _UID = 0;
-  var MM_PER_PIXEL = 10;
-  var BIN_DIMENSION = 100;
   var OPTIONS = {
     binds: {
       up:'ArrowUp',
@@ -38,12 +33,15 @@ var SG = (function(){
   //  SUB-MODULES
   var Create; // object creation module
   var SpatialHash; // spatial culling module
-  var View; // information needed for graphics
   var Input; // handle user keyboard & mouse input
 
   //  ***  HELPER FUNCTIONS  ***  //
   
   function _CL(msg) {if (OPTIONS.verbose) console.log(msg);}
+
+  function rI(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
 
   function resizeWindow() {
     context.canvas.width = canvas.offsetWidth;
@@ -110,14 +108,17 @@ var SG = (function(){
     //  Gameplay
     for (var uid in objects) objects[uid].step(dt);
     //  Graphics
-    context.transform(1,0,0,1,0,0);
+    
+    context.setTransform(1,0,0,-1,context.canvas.width/2,context.canvas.height/2);
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
     context.fillRect(100,100,100,100);
     for (uid in objects) {
+      var target = objects[uid];
+      
       context.beginPath();
       context.arc(objects[uid].x,objects[uid].y,50,0,2*Math.PI);
-      context.stroke();
+      context.fill();
     }
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
@@ -152,9 +153,11 @@ var SG = (function(){
   SpatialHash = (function(){
 
     var bin = {};
+    var CELL_SIZE = 100;
 
-    function hash(a) {return Math.floor(a/BIN_DIMENSION);}
+    function hash(a) {return Math.floor(a/CELL_SIZE);}
     function retrieve(x,y,radius,maskUID) {
+      if (x%CELL_SIZE > CELL_SIZE/2) ;
     }
     function insert(X,Y,UID) {
       if (bin[X])
@@ -244,6 +247,20 @@ var SG = (function(){
     Item._Item = function() {_BasicObject.call(this);};
     Extend.call(Item._Item,_BasicObject);
 
+    function transmogrifyUID(n) {
+      exp = exp || 0;
+      var _value = Math.pow(52,exp);
+      var R = n % (_value*52);
+      var char = R/_value;
+      if (char === 52) char = 97;
+      else if (char < 26) char = 97 + char;
+      else char = 39 + char;
+      console.log(n,_value,R,char,n>=_value);
+      var str = String.fromCharCode(char);
+      if (n > _value) str = (transmogrifyUID(n-(R||_value-1),exp+1)) + str;
+      return str;
+    }
+
     function make(category,type,x,y) {
       var _object;
       switch(category) {
@@ -252,7 +269,8 @@ var SG = (function(){
         case 'Growth': _object = new Growth[type](); break;
         case 'Item': _object = new Item[type](); break;
       }
-      _object.uid =  ++_UID;
+      _UID += 1;
+      _object.uid = transmogrifyUID(_UID);
       _object.x = x;
       _object.y = y;
       objects[_object.uid] = _object;
@@ -280,7 +298,7 @@ var SG = (function(){
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
 
-    sg.addEventListener('click',function(){game.mode = 'sg';});
+    sg.addEventListener('click',function(){game.mode = 'gameplay';});
     belt.addEventListener('click',function(){game.mode = 'belt';});
     backpack.addEventListener('click',function(){game.mode = 'backpack';});
     mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
@@ -288,6 +306,7 @@ var SG = (function(){
     //  Make fake world for now...
     Create.player(0,0);
     Create.creature('Dog',200,200);
+    console.log(objects);
 
     window.requestAnimationFrame(gameplay);
   }
