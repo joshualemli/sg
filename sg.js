@@ -15,9 +15,8 @@ var SG = (function(){
   var backpack, backpackMode;
   var mobiledevice, mobiledeviceMode;
 
-  var _UID = 0; // last UID created
-
   //  CONSTANTS AND GAME OPTIONS
+  var _UID = 0; // next UID to be created
   var OPTIONS = {
     binds: {
       up:'ArrowUp',
@@ -247,7 +246,7 @@ var SG = (function(){
     Item._Item = function() {_BasicObject.call(this);};
     Extend.call(Item._Item,_BasicObject);
 
-    function transmogrifyUID(n) {
+    function transmogrifyUID(n,exp) {
       exp = exp || 0;
       var _value = Math.pow(52,exp);
       var R = n % (_value*52);
@@ -255,9 +254,8 @@ var SG = (function(){
       if (char === 52) char = 97;
       else if (char < 26) char = 97 + char;
       else char = 39 + char;
-      console.log(n,_value,R,char,n>=_value);
       var str = String.fromCharCode(char);
-      if (n > _value) str = (transmogrifyUID(n-(R||_value-1),exp+1)) + str;
+      if (n > _value*52-1) str = (transmogrifyUID(n-(R||_value-1),exp+1)) + str;
       return str;
     }
 
@@ -269,8 +267,8 @@ var SG = (function(){
         case 'Growth': _object = new Growth[type](); break;
         case 'Item': _object = new Item[type](); break;
       }
-      _UID += 1;
       _object.uid = transmogrifyUID(_UID);
+      _UID += 1;
       _object.x = x;
       _object.y = y;
       objects[_object.uid] = _object;
