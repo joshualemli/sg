@@ -5,15 +5,25 @@
 
 var SG = (function(){
 
-  //  HTML DOM ELEMENTS AND APIS
+  //  HTML ELEMENTS & API, ASSOCIATED LOOP FUNCTIONS
   var canvas; // canvas element
-  var context; // canvas context
-  var info; // output messages
-  var controls;
-  var sg, gameplay;
-  var belt, beltMode;
-  var backpack, backpackMode;
-  var mobiledevice, mobiledeviceMode;
+  var context; // canvas context element
+  var info; // element to output messages
+  var controls; // element to contain UI
+  var sg;
+  var belt;
+  var backpack;
+  var mobiledevice;
+  //  LOOP FUNCTIONS
+  var gameplay;
+  var beltMode;
+  var backpackMode;
+  var mobiledeviceMode;
+  //  SUB-MODULES
+  var entities; // all dynamic objects in the world
+  var Create; // object creation module
+  var SpatialHash; // spatial culling module
+  var Input; // handle user keyboard & mouse input
 
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0; // next UID to be created
@@ -28,11 +38,6 @@ var SG = (function(){
     },
     verbose:true
   };
-
-  //  SUB-MODULES
-  var Create; // object creation module
-  var SpatialHash; // spatial culling module
-  var Input; // handle user keyboard & mouse input
 
   //  ***  HELPER FUNCTIONS  ***  //
   
@@ -49,7 +54,7 @@ var SG = (function(){
 
   //  ***  GAME MECHANICS  ***  //
 
-  var objects = {};
+  entities = {};
 
   var game = {
     mode: 'gameplay',
@@ -105,14 +110,21 @@ var SG = (function(){
     game._framerate += dt;
     //  Input
     //  Gameplay
-    for (var uid in objects) objects[uid].step(dt);
+    for (var uid in entities) entities[uid].step(dt);
     //  Graphics
     context.setTransform(1,0,0,-1,context.canvas.width/2,context.canvas.height/2);
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
     context.fillRect(100,100,100,100);
-    for (uid in objects) {
-      var target = objects[uid];
+    var _bin = SpatialHash.bin();console.log(_bin);
+    var _spatialCellSize = SpatialHash.cellSize();
+    for (var _X in _bin) {
+      for (var _Y in _bin[_X]) {
+        context.strokeRect(_X*_spatialCellSize,_Y*_spatialCellSize,_spatialCellSize,_spatialCellSize);
+      }
+    }
+    for (uid in entities) {
+      var target = entities[uid];
       if (1){ //is in view?
         context.beginPath();
         context.arc(target.x,target.y,target.radius,0,2*Math.PI);
@@ -131,12 +143,11 @@ var SG = (function(){
                     game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
       info.innerHTML = infoMsg;
     }
-    loopByMode();
+    //loopByMode();
   }
-  
 
   //  ***  MODULES  ***  //
-  
+
   Input = (function(){
     var keyState = {};
     var clickData = {};
@@ -148,7 +159,7 @@ var SG = (function(){
     }
     function getClick(clearData) {
       if (clearData) {
-        return {x:_x,y:_y};
+        //return {x:_x,y:_y};
       }
       return {x:clickData.x,y:clickData.y}
     }
@@ -205,7 +216,8 @@ var SG = (function(){
         var X = hash(x); var Y = hash(y);
       },
       transfer:transfer,
-      bin:function(){return bin}
+      bin:function(){return bin;},
+      cellSize:function(){return CELL_SIZE;},
     };
 
   })(); // end `SpatialHash` module
@@ -217,25 +229,25 @@ var SG = (function(){
       this.prototype.constructor = this;
     }
 
-    var _BasicObject = function() {
+    var _BasicEntity = function() {
       this.radius = 1; // "millimeters"
       this.age = 0; // <int> milliseconds
       this.x = 0;
       this.y = 0;
     };
-    _BasicObject.prototype.step = function() {};
+    _BasicEntity.prototype.step = function() {};
     
     var Player = function() {
-      _BasicObject.call(this);
+      _BasicEntity.call(this);
       this.level = 1;
       this.radius = 10;
     };
-    Extend.call(Player,_BasicObject);
+    Extend.call(Player,_BasicEntity);
 
     //  ***  CREATURES  ***  //
     var Creature = {};
-    Creature._Creature = function() {_BasicObject.call(this);};
-    Extend.call(Creature._Creature,_BasicObject);
+    Creature._Creature = function() {_BasicEntity.call(this);};
+    Extend.call(Creature._Creature,_BasicEntity);
 
     Creature.Dog = function() {
       Creature._Creature.call(this);
@@ -251,13 +263,25 @@ var SG = (function(){
 
     //  ***  GROWTHS  ***  //
     var Growth = {};
-    Growth._Growth = function() {_BasicObject.call(this);};
-    Extend.call(Growth._Growth,_BasicObject);
+    Growth._Growth = function() {
+      _BasicEntity.call(this);
+      this.maxRadius = 1;
+    };
+    Extend.call(Growth._Growth,_BasicEntity);
+    Growth.prototype.step = function() {
+      if (this.radius < this.maxRadius) this.radius += 0.0001;
+    };
+    
+    Growth.Parsley = function() {
+      Growth._Growth.call(this);
+      this.maxRadius = 4;
+    };
+    Extend.call(Growth.Parsley,Growth._Growth);
 
     //  ***  ITEMS  ***  //
     var Item = {};
-    Item._Item = function() {_BasicObject.call(this);};
-    Extend.call(Item._Item,_BasicObject);
+    Item._Item = function() {_BasicEntity.call(this);};
+    Extend.call(Item._Item,_BasicEntity);
 
     function transmogrifyUID(n,exp) {
       exp = exp || 0;
@@ -273,19 +297,19 @@ var SG = (function(){
     }
 
     function make(category,type,x,y) {
-      var _object;
+      var _enitity;
       switch(category) {
-        case 'Player': _object = new Player(); break;
-        case 'Creature': _object = new Creature[type](); break;
-        case 'Growth': _object = new Growth[type](); break;
-        case 'Item': _object = new Item[type](); break;
+        case 'Player': _enitity = new Player(); break;
+        case 'Creature': _enitity = new Creature[type](); break;
+        case 'Growth': _enitity = new Growth[type](); break;
+        case 'Item': _enitity = new Item[type](); break;
       }
-      _object.uid = transmogrifyUID(_UID);
+      _enitity.uid = transmogrifyUID(_UID);
       _UID += 1;
-      _object.x = x;
-      _object.y = y;
-      objects[_object.uid] = _object;
-      SpatialHash.insert(_object.x,_object.y,_object.uid);
+      _enitity.x = x;
+      _enitity.y = y;
+      entities[_enitity.uid] = _enitity;
+      SpatialHash.insert(_enitity.x,_enitity.y,_enitity.uid);
     }
 
     return {
@@ -315,9 +339,8 @@ var SG = (function(){
     mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
 
     //  Make fake world for now...
-    Create.player(0,0);
+    Create.player(10,20);
     Create.creature('Dog',200,200);
-    console.log(objects);
 
     window.requestAnimationFrame(gameplay);
   }
