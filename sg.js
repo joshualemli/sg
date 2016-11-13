@@ -10,7 +10,7 @@ var SG = (function(){
   var context; // canvas context element
   var info; // element to output messages
   var controls; // element to contain UI
-  var sg;
+  var sg; // --> `gameplay`
   var belt;
   var backpack;
   var mobiledevice;
@@ -20,6 +20,8 @@ var SG = (function(){
   var backpackMode;
   var mobiledeviceMode;
   //  SUB-MODULES
+  var game; // game parameters
+  var commands; // use input actionables
   var entities; // all dynamic objects in the world
   var Create; // object creation module
   var SpatialHash; // spatial culling module
@@ -28,14 +30,6 @@ var SG = (function(){
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0; // next UID to be created
   var OPTIONS = {
-    binds: {
-      up:'ArrowUp',
-      down:'ArrowDown',
-      left:'ArrowLeft',
-      right:'ArrowRight',
-      mIncrease:'=',
-      mDecrease:'-',
-    },
     verbose:true
   };
 
@@ -56,17 +50,32 @@ var SG = (function(){
 
   entities = {};
 
-  var game = {
-    mode: 'gameplay',
+  game = {
+    viewX:0, // center-point
+    viewY:0, // center-point
+    viewM:1, // scalar (magnification)
+    mode: 'gameplay', // controls loop function via `loopByMode` function
     iteration: 0, // persistent loop counter
     date: 0, // milliseconds
+    timeFactor: 1, // game speed multiplier
     playtime: 0, // milliseconds
-    dateInSeconds: function(){return Math.round(this.date/1000);},
     framerate: 0, // last average
     _framerate: 0, // rolling total
     loopTime: 0, // last average
     _loopTime: 0, // rolling total
     _framecount: 0, // frames in `_framerate`
+    clock: function() {
+      
+    },
+    month: function() {
+      return Math.floor(game.date/2635200000)%12;
+    },
+    days: function() {
+      return Math.floor(this.month()/30.5);
+    },
+    years: function() {
+      return Math.floor(this.date/31536000000);
+    },
   };
 
   function loopByMode() {
@@ -78,6 +87,8 @@ var SG = (function(){
       default: return false;
     } return true;
   }
+  
+  commands = {};
 
   beltMode = function() {
     context.setTransform(1,0,0,1,0,0);
@@ -104,11 +115,13 @@ var SG = (function(){
     var loopStartTime = performance.now();
     game.iteration += 1;
     game._framecount += 1;
-    var dt = _t - game.playtime;
+    var dt = Math.round((_t - game.playtime)*game.timeFactor);
     game.playtime = _t;
     game.date += dt;
     game._framerate += dt;
     //  Input
+    var inputs = Input.gameplay();
+    for (var command in inputs) if (inputs[command]) command
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
     //  Graphics
@@ -116,7 +129,7 @@ var SG = (function(){
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
     context.fillRect(100,100,100,100);
-    var _bin = SpatialHash.bin();console.log(_bin);
+    var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
     for (var _X in _bin) {
       for (var _Y in _bin[_X]) {
@@ -139,11 +152,15 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg = 'world age: ' + game.dateInSeconds() + 's<br>' + game.iteration + ' loops<br>' +
+      var infoMsg = '`formattedDate`: ' + game.formattedDate() + '<br>' +
+                    'month: ' + game.month() + '<br>' +
+                    'raw `date`:' + game.date + '<br>' +
+                    '`dt`: ' + dt + '<br>' +
+                    game.iteration + ' loops<br>' +
                     game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
       info.innerHTML = infoMsg;
     }
-    //loopByMode();
+    loopByMode();
   }
 
   //  ***  MODULES  ***  //
@@ -166,10 +183,26 @@ var SG = (function(){
     window.addEventListener('keydown',keyDown);
     window.addEventListener('keyup',keyUp);
     window.addEventListener('click',registerClick);
+    var binds = {
+      up:'ArrowUp',
+      down:'ArrowDown',
+      left:'ArrowLeft',
+      right:'ArrowRight',
+      magIncrease:'=',
+      magDecrease:'-'
+    }; (function(){for (var i in binds) keyState[binds[i]]=false;})(); // make bind keys in `keyState`
+    function getGameplayRelated() {
+      var inputs = {};
+      for (var i in binds) {
+        inputs[i] = keyState[binds[i]];
+      }
+      return inputs;
+    }
     return {
       all:function(){return keyState;},
       getKeyState:function(a){return keyState[a];},
-      getClick:getClick
+      getClick:getClick,
+      gameplay:getGameplayRelated
     };
   })();
 
@@ -245,10 +278,14 @@ var SG = (function(){
     Extend.call(Player,_BasicEntity);
 
     //  ***  CREATURES  ***  //
+
     var Creature = {};
+    //  Top-level creature pseudo-class
     Creature._Creature = function() {_BasicEntity.call(this);};
     Extend.call(Creature._Creature,_BasicEntity);
 
+    //  Dogs
+    
     Creature.Dog = function() {
       Creature._Creature.call(this);
       this.bark = 'woof!';
@@ -260,15 +297,32 @@ var SG = (function(){
       Creature.Dog.call(this);
     };
     Extend.call(Creature.Labrador,Creature.Dog);
+    
+    Creature.Mutt = function(){};
+    
+    //  Horses
+    
+    //  Llamas
+    
+    //  Cows
+    
+    //  Chickens
+    
+    //  Cats
+    
+    //  Rabbits
+    
+    //  Mice
 
     //  ***  GROWTHS  ***  //
+
     var Growth = {};
     Growth._Growth = function() {
       _BasicEntity.call(this);
       this.maxRadius = 1;
     };
     Extend.call(Growth._Growth,_BasicEntity);
-    Growth.prototype.step = function() {
+    Growth._Growth.prototype.step = function() {
       if (this.radius < this.maxRadius) this.radius += 0.0001;
     };
     
@@ -279,6 +333,7 @@ var SG = (function(){
     Extend.call(Growth.Parsley,Growth._Growth);
 
     //  ***  ITEMS  ***  //
+
     var Item = {};
     Item._Item = function() {_BasicEntity.call(this);};
     Extend.call(Item._Item,_BasicEntity);
@@ -352,3 +407,19 @@ var SG = (function(){
 })();
 
 window.onload = SG.init;
+
+/*
+
+mobiledevice (upgrades affect: dilator range, sleep range, dog collar?)
+-------------
+^ time dilator
+v [*****....]
+!sleep! (x) months (y) years
+
+options
+
+save
+load
+exit
+
+*/
