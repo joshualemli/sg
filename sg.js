@@ -57,7 +57,7 @@ var SG = (function(){
     mode: 'gameplay', // controls loop function via `loopByMode` function
     iteration: 0, // persistent loop counter
     date: 0, // milliseconds
-    timeFactor: 1, // game speed multiplier
+    timeFactor: 1e10, // game speed multiplier
     playtime: 0, // milliseconds
     framerate: 0, // last average
     _framerate: 0, // rolling total
@@ -65,24 +65,22 @@ var SG = (function(){
     _loopTime: 0, // rolling total
     _framecount: 0, // frames in `_framerate`
     hoursMinutesSeconds: function() {
-      var hrs = this.date/3600000%3600000;
+      var hrs = (this.date/3600000)%24;
       var min = hrs%1*60;
       var sec = Math.floor(min%1*60);
       return (hrs>=10?Math.floor(hrs):'0'+Math.floor(hrs))+':' +
              (min>=10?Math.floor(min):'0'+Math.floor(min))+':' +
              (sec>=10?Math.floor(sec):'0'+Math.floor(sec));
     },
-    days: function() {
-      return Math.floor(this.date/86400000%86400000);
-    },
-    years: function() {
-      return Math.floor(this.date/31536000000);
-    },
+    days: function() {return Math.floor(this.date/86400000%86400000);},
+    years: function() {return Math.floor(this.date/31536000000);},
     month: function() {
       var mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       return mo[Math.floor(game.date/2635200000)%12];
     },
     season: function() {
+      var seas = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Autumn','Autumn','Autumn','Winter'];
+      return seas[Math.floor(game.date/2635200000)%12];
     }
   };
 
@@ -136,7 +134,6 @@ var SG = (function(){
     context.setTransform(1,0,0,-1,context.canvas.width/2,context.canvas.height/2);
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
-    context.fillRect(100,100,100,100);
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
     for (var _X in _bin) {
@@ -161,8 +158,7 @@ var SG = (function(){
       game._framerate = 0;
       game._loopTime = 0;
       var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutesSeconds() + '<br>' +
-                    game.month() + '<br>' +
-                    'raw `date`:' + game.date + '<br>' +
+                    game.month() + ' - ' + game.season() + '<br>' +
                     '`dt`: ' + dt + '<br>' +
                     game.iteration + ' loops<br>' +
                     game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
