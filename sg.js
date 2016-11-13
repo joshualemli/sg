@@ -64,18 +64,26 @@ var SG = (function(){
     loopTime: 0, // last average
     _loopTime: 0, // rolling total
     _framecount: 0, // frames in `_framerate`
-    clock: function() {
-      
-    },
-    month: function() {
-      return Math.floor(game.date/2635200000)%12;
+    hoursMinutesSeconds: function() {
+      var hrs = this.date/3600000%3600000;
+      var min = hrs%1*60;
+      var sec = Math.floor(min%1*60);
+      return (hrs>=10?Math.floor(hrs):'0'+Math.floor(hrs))+':' +
+             (min>=10?Math.floor(min):'0'+Math.floor(min))+':' +
+             (sec>=10?Math.floor(sec):'0'+Math.floor(sec));
     },
     days: function() {
-      return Math.floor(this.month()/30.5);
+      return Math.floor(this.date/86400000%86400000);
     },
     years: function() {
       return Math.floor(this.date/31536000000);
     },
+    month: function() {
+      var mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return mo[Math.floor(game.date/2635200000)%12];
+    },
+    season: function() {
+    }
   };
 
   function loopByMode() {
@@ -152,8 +160,8 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg = '`formattedDate`: ' + game.formattedDate() + '<br>' +
-                    'month: ' + game.month() + '<br>' +
+      var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutesSeconds() + '<br>' +
+                    game.month() + '<br>' +
                     'raw `date`:' + game.date + '<br>' +
                     '`dt`: ' + dt + '<br>' +
                     game.iteration + ' loops<br>' +
