@@ -90,7 +90,12 @@ var SG = (function(){
     } return true;
   }
   
-  commands = {};
+  commands = {
+    up: function() {game.viewY+=1;},
+    down: function() {game.viewY-=1;},
+    left: function() {game.viewX-=1;},
+    right: function() {game.viewX+=1;}
+  };
 
   beltMode = function() {
     context.setTransform(1,0,0,1,0,0);
@@ -123,11 +128,14 @@ var SG = (function(){
     game._framerate += dt;
     //  Input
     var inputs = Input.gameplay();
-    for (var command in inputs) if (inputs[command]) command
+    for (var command in inputs) if (inputs[command]) commands[command]();
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
     //  Graphics
-    context.setTransform(1,0,0,-1,context.canvas.width/2,context.canvas.height/2);
+    context.setTransform(1,0,0,1,0,0);
+    context.fillStyle = 'rgb(50,35,35)';
+    context.fillRect(0,0,context.canvas.width,context.canvas.height);
+    context.setTransform(1,0,0,-1,context.canvas.width/2-game.viewX,context.canvas.height/2+game.viewY);
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
     var _bin = SpatialHash.bin();
@@ -264,17 +272,20 @@ var SG = (function(){
     }
 
     var _BasicEntity = function() {
-      this.radius = 1; // "millimeters"
+      this.radius = 1;
       this.age = 0; // <int> milliseconds
       this.x = 0;
       this.y = 0;
     };
     _BasicEntity.prototype.step = function() {};
-    
+
+    //  ***  PLAYER  ***  //
+
     var Player = function() {
       _BasicEntity.call(this);
       this.level = 1;
       this.radius = 10;
+      this.items = [];
     };
     Extend.call(Player,_BasicEntity);
     Player.prototype.step = function() {
@@ -324,15 +335,17 @@ var SG = (function(){
     Growth._Growth = function() {
       _BasicEntity.call(this);
       this.maxRadius = 1;
+      this.growthRate = 1e-4;
     };
     Extend.call(Growth._Growth,_BasicEntity);
     Growth._Growth.prototype.step = function() {
-      if (this.radius < this.maxRadius) this.radius += 0.0001;
+      if (this.radius < this.maxRadius) this.radius += this.growthRate;
     };
     
     Growth.Parsley = function() {
       Growth._Growth.call(this);
       this.maxRadius = 4;
+      this.value = 1;
     };
     Extend.call(Growth.Parsley,Growth._Growth);
 
