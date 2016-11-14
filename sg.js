@@ -56,31 +56,27 @@ var SG = (function(){
     viewM:1, // scalar (magnification)
     mode: 'gameplay', // controls loop function via `loopByMode` function
     iteration: 0, // persistent loop counter
-    date: 0, // milliseconds
-    timeFactor: 1e10, // game speed multiplier
-    playtime: 0, // milliseconds
+    date: 0, // "seconds" (game time)
+    currentPlaytime: 0, // milliseconds
     framerate: 0, // last average
     _framerate: 0, // rolling total
     loopTime: 0, // last average
     _loopTime: 0, // rolling total
     _framecount: 0, // frames in `_framerate`
-    hoursMinutesSeconds: function() {
-      var hrs = (this.date/3600000)%24;
-      var min = hrs%1*60;
-      var sec = Math.floor(min%1*60);
-      return (hrs>=10?Math.floor(hrs):'0'+Math.floor(hrs))+':' +
-             (min>=10?Math.floor(min):'0'+Math.floor(min))+':' +
-             (sec>=10?Math.floor(sec):'0'+Math.floor(sec));
+    hoursMinutes: function() {
+      var hrs = Math.floor(this.date/60)%24;
+      var min = this.date%60;
+      return (hrs>=10?hrs:'0'+hrs) + ':' + (min>=10?min:'0'+min);
     },
-    days: function() {return Math.floor(this.date/86400000%86400000);},
-    years: function() {return Math.floor(this.date/31536000000);},
+    days: function() {return Math.floor(this.date/1440%365);},
+    years: function() {return Math.floor(this.date/525600);},
     month: function() {
       var mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      return mo[Math.floor(game.date/2635200000)%12];
+      return mo[Math.floor(game.date/263520000)%12];
     },
     season: function() {
       var seas = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Autumn','Autumn','Autumn','Winter'];
-      return seas[Math.floor(game.date/2635200000)%12];
+      return seas[Math.floor(game.date/263520000)%12];
     }
   };
 
@@ -121,8 +117,8 @@ var SG = (function(){
     var loopStartTime = performance.now();
     game.iteration += 1;
     game._framecount += 1;
-    var dt = Math.round((_t - game.playtime)*game.timeFactor);
-    game.playtime = _t;
+    var dt = Math.round((_t - game.currentPlaytime)/17)*3;
+    game.currentPlaytime = _t;
     game.date += dt;
     game._framerate += dt;
     //  Input
@@ -151,13 +147,13 @@ var SG = (function(){
     }
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
-    if (game._framecount === 30) {
+    if (game._framecount%3 === 0) {
       game.framerate = Math.round(game._framecount/game._framerate*1000);
       game.loopTime = (game._loopTime/game._framecount).toFixed(2);
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutesSeconds() + '<br>' +
+      var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
                     game.month() + ' - ' + game.season() + '<br>' +
                     '`dt`: ' + dt + '<br>' +
                     game.iteration + ' loops<br>' +
@@ -211,13 +207,21 @@ var SG = (function(){
   })();
 
   SpatialHash = (function(){
-
     var bin = {};
     var CELL_SIZE = 100;
-
     function hash(a) {return Math.floor(a/CELL_SIZE);}
-    function retrieve(x,y,radius,maskUID) {
-      if (x%CELL_SIZE > CELL_SIZE/2) ;
+    function retrieve(x,y,maskUID) {
+      var X = hash(x); var Y = hash(y);
+      var XLook = x%CELL_SIZE > CELL_SIZE/2 ? X+1 : X-1;
+      var YLook = y%CELL_SIZE > CELL_SIZE/2 ? Y+1 : Y-1;
+      var selectedUIDs = bin[X][Y].slice();
+      if (bin[X][YLook]) bin[X][YLook].forEach(function(uid){selectedUIDs.push(uid);});
+      if (bin[XLook]) {
+        if (bin[XLook][YLook]) bin[XLook][YLook].forEach(function(uid){selectedUIDs.push(uid);});
+        if (bin[XLook][Y]) bin[XLook][Y].forEach(function(uid){selectedUIDs.push(uid);});
+      }
+      if (maskUID) selectedUIDs.splice(selectedUIDs.indexOf(maskUID),1);
+      return selectedUIDs;
     }
     function insert(X,Y,UID) {
       if (bin[X])
@@ -242,21 +246,14 @@ var SG = (function(){
         insert(Xf,Yf,UID);
       }
     }
-  
     return {
       retrieve:retrieve,
-      insert:function(x,y,UID) {
-        var X = hash(x); var Y = hash(y);
-        insert(X,Y,UID);
-      },
-      remove:function(x,y,UID) {
-        var X = hash(x); var Y = hash(y);
-      },
+      insert:function(x,y,UID) {insert(hash(x),hash(y),UID);},
+      remove:function(x,y,UID) {remove(hash(x),hash(y),UID);},
       transfer:transfer,
       bin:function(){return bin;},
       cellSize:function(){return CELL_SIZE;},
     };
-
   })(); // end `SpatialHash` module
 
   Create = (function(){
@@ -280,6 +277,9 @@ var SG = (function(){
       this.radius = 10;
     };
     Extend.call(Player,_BasicEntity);
+    Player.prototype.step = function() {
+      var neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
+    }
 
     //  ***  CREATURES  ***  //
 
@@ -399,7 +399,9 @@ var SG = (function(){
 
     //  Make fake world for now...
     Create.player(10,20);
-    Create.creature('Dog',200,200);
+    Create.creature('Dog',220,250);
+    Create.creature('Dog',-100,250);
+    Create.creature('Dog',-290,-117);
 
     window.requestAnimationFrame(gameplay);
   }
