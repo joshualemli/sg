@@ -91,10 +91,12 @@ var SG = (function(){
   }
   
   commands = {
-    up: function() {game.viewY+=1;},
-    down: function() {game.viewY-=1;},
-    left: function() {game.viewX-=1;},
-    right: function() {game.viewX+=1;}
+    up: function() {game.viewY += 10/game.viewM;},
+    down: function() {game.viewY -= 10/game.viewM;},
+    left: function() {game.viewX -= 10/game.viewM;},
+    right: function() {game.viewX += 10/game.viewM;},
+    magIncrease: function() {game.viewM *= 1.01;},
+    magDecrease: function() {game.viewM *= 0.99;}
   };
 
   beltMode = function() {
@@ -135,9 +137,16 @@ var SG = (function(){
     context.setTransform(1,0,0,1,0,0);
     context.fillStyle = 'rgb(50,35,35)';
     context.fillRect(0,0,context.canvas.width,context.canvas.height);
-    context.setTransform(1,0,0,-1,context.canvas.width/2-game.viewX,context.canvas.height/2+game.viewY);
+    context.setTransform( game.viewM,0,0,-game.viewM,
+                          context.canvas.width/2 - game.viewX*game.viewM,
+                          context.canvas.height/2 + game.viewY*game.viewM );
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
+
+        context.beginPath();
+        context.arc(0,0,100,0,2*Math.PI);
+        context.fill();
+
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
     for (var _X in _bin) {
@@ -165,7 +174,8 @@ var SG = (function(){
                     game.month() + ' - ' + game.season() + '<br>' +
                     '`dt`: ' + dt + '<br>' +
                     game.iteration + ' loops<br>' +
-                    game.framerate + 'fps<br>' + game.loopTime + 'ms/loop';
+                    game.framerate + 'fps<br>' + game.loopTime + 'ms/loop' +
+                    '<br>' + game.viewX + ' x , ' + game.viewY + ' y, ' + game.viewM + ' mag';
       info.innerHTML = infoMsg;
     }
     loopByMode();
@@ -411,7 +421,7 @@ var SG = (function(){
     mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
 
     //  Make fake world for now...
-    Create.player(10,20);
+    Create.player(10,-10);
     Create.creature('Dog',220,250);
     Create.creature('Dog',-100,250);
     Create.creature('Dog',-290,-117);
