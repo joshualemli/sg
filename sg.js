@@ -72,11 +72,11 @@ var SG = (function(){
     years: function() {return Math.floor(this.date/525600);},
     month: function() {
       var mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      return mo[Math.floor(game.date/263520000)%12];
+      return mo[Math.floor(game.date/43920)%12];
     },
     season: function() {
       var seas = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Autumn','Autumn','Autumn','Winter'];
-      return seas[Math.floor(game.date/263520000)%12];
+      return seas[Math.floor(game.date/43920)%12];
     }
   };
 
@@ -95,8 +95,8 @@ var SG = (function(){
     down: function() {game.viewY -= 10/game.viewM;},
     left: function() {game.viewX -= 10/game.viewM;},
     right: function() {game.viewX += 10/game.viewM;},
-    magIncrease: function() {game.viewM *= 1.01;},
-    magDecrease: function() {game.viewM *= 0.99;}
+    magIncrease: function() {game.viewM = (game.viewM*1.01).toFixed(4);},
+    magDecrease: function() {game.viewM = (game.viewM*0.99).toFixed(4);}
   };
 
   beltMode = function() {
@@ -142,11 +142,6 @@ var SG = (function(){
                           context.canvas.height/2 + game.viewY*game.viewM );
     context.fillStyle = '#00FF00';
     context.strokeStyle = '#FF0000';
-
-        context.beginPath();
-        context.arc(0,0,100,0,2*Math.PI);
-        context.fill();
-
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
     for (var _X in _bin) {
@@ -157,6 +152,8 @@ var SG = (function(){
     for (uid in entities) {
       var target = entities[uid];
       if (1){ //is in view?
+        if (target.color) context.fillStyle = target.color;
+        else context.fillStyle = 'rgb(0,255,0)';
         context.beginPath();
         context.arc(target.x,target.y,target.radius,0,2*Math.PI);
         context.fill();
@@ -317,6 +314,22 @@ var SG = (function(){
       this.radius = 5;
     };
     Extend.call(Creature.Dog,Creature._Creature);
+    Creature.Dog.prototype.step = function() {
+      var xi = this.x;
+      var yi = this.y;
+      this.x += rI(-1,1);
+      this.y += rI(-1,1);
+      SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
+      var neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
+      if (neighbors.length) {
+        for (var i = neighbors.length; i--;) {
+          var neighbor = entities[neighbors[i]];
+          var dD = Math.sqrt((neighbor.x-this.x)*(neighbor.x-this.x)+(neighbor.y-this.y)*(neighbor.y-this.y));
+          if (dD < this.radius+neighbor.radius) this.color='rgb(255,0,0)';
+          else this.color='rgb(0,255,0)';
+        }
+      }
+    };
 
     Creature.Labrador = function() {
       Creature.Dog.call(this);
@@ -379,26 +392,28 @@ var SG = (function(){
     }
 
     function make(category,type,x,y) {
-      var _enitity;
+      var _entity;
       switch(category) {
-        case 'Player': _enitity = new Player(); break;
-        case 'Creature': _enitity = new Creature[type](); break;
-        case 'Growth': _enitity = new Growth[type](); break;
-        case 'Item': _enitity = new Item[type](); break;
+        case 'Player': _entity = new Player(); break;
+        case 'Creature': _entity = new Creature[type](); break;
+        case 'Growth': _entity = new Growth[type](); break;
+        case 'Item': _entity = new Item[type](); break;
+        default: return null;
       }
-      _enitity.uid = transmogrifyUID(_UID);
+      _entity.uid = transmogrifyUID(_UID);
       _UID += 1;
-      _enitity.x = x;
-      _enitity.y = y;
-      entities[_enitity.uid] = _enitity;
-      SpatialHash.insert(_enitity.x,_enitity.y,_enitity.uid);
+      _entity.x = x;
+      _entity.y = y;
+      entities[_entity.uid] = _entity;
+      SpatialHash.insert(_entity.x,_entity.y,_entity.uid);
+      return _entity;
     }
 
     return {
-      player:function(x,y){make('Player',null,x,y);},
-      creature:function(a,x,y){make('Creature',a,x,y);},
-      growth:function(a,x,y){make('Growth',a,x,y);},
-      item:function(a,x,y){make('Item',a,x,y);}
+      player:function(x,y){return make('Player',null,x,y);},
+      creature:function(a,x,y){return make('Creature',a,x,y);},
+      growth:function(a,x,y){return make('Growth',a,x,y);},
+      item:function(a,x,y){return make('Item',a,x,y);}
     };
 
   })(); // end `Create` module
@@ -425,6 +440,7 @@ var SG = (function(){
     Create.creature('Dog',220,250);
     Create.creature('Dog',-100,250);
     Create.creature('Dog',-290,-117);
+    for (var _i_1 = 40; _i_1--;) Create.creature('Dog',rI(-380,380),rI(-300,300));
 
     window.requestAnimationFrame(gameplay);
   }
