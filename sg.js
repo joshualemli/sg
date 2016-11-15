@@ -150,6 +150,7 @@ var SG = (function(){
         context.fill();
       }
     }
+    /*
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
     context.fillStyle = '#0000FF';
@@ -162,6 +163,7 @@ var SG = (function(){
         });
       }
     }
+    */
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
     if (game._framecount%3 === 0) {
@@ -170,13 +172,13 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-//       var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
-//                     game.month() + ' - ' + game.season() + '<br>' +
-//                     '`dt`: ' + dt + '<br>' +
-//                     game.iteration + ' loops<br>' +
-//                     game.framerate + 'fps<br>' + game.loopTime + 'ms/loop' +
-//                     '<br>' + game.viewX + ' x , ' + game.viewY + ' y, ' + game.viewM + ' mag';
-//       info.innerHTML = infoMsg;
+      var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
+                    game.month() + ' - ' + game.season() + '<br>' +
+                    '`dt`: ' + dt + '<br>' +
+                    game.iteration + ' loops<br>' +
+                    game.framerate + 'fps<br>' + game.loopTime + 'ms/loop' +
+                    '<br>' + game.viewX + ' x , ' + game.viewY + ' y, ' + game.viewM + ' mag';
+      info.innerHTML = infoMsg;
     }
     loopByMode();
   }
@@ -328,10 +330,11 @@ var SG = (function(){
     };
     Extend.call(Creature.Dog,Creature._Creature);
     Creature.Dog.prototype.step = function() {
+      this.radius -= 0.005;
       var xi = this.x;
       var yi = this.y;
-      this.x += rI(-1,1);
-      this.y += rI(-1,1);
+      this.x += rI(-5,5)/10;
+      this.y += rI(-5,5)/10;
       SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
       var neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
       if (neighbors.length) {
@@ -340,10 +343,17 @@ var SG = (function(){
           var dD = Math.sqrt((neighbor.x-this.x)*(neighbor.x-this.x)+(neighbor.y-this.y)*(neighbor.y-this.y));
           if (dD < this.radius+neighbor.radius) {
             this.color='rgb(255,0,0)';
+            this.radius += 0.01;
             i = 0;
           }
-          else this.color='rgb(0,255,0)';
+          else {
+            this.color='rgb(0,255,0)';
+          }
         }
+      }
+      if (this.radius < 0.5) {
+        SpatialHash.remove(this.x,this.y,this.uid);
+        delete entities[this.uid];
       }
     };
 
@@ -453,7 +463,7 @@ var SG = (function(){
 
     //  Make fake world for now...
     Create.player(0,0);
-    for (var _i_1 = 100; _i_1--;) Create.creature('Dog',rI(-380,380),rI(-300,300));
+    for (var _i_1 = 250; _i_1--;) Create.creature('Dog',rI(-450,450),rI(-300,300));
 
       //DEBUG
     
