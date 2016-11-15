@@ -140,15 +140,6 @@ var SG = (function(){
     context.setTransform( game.viewM,0,0,-game.viewM,
                           context.canvas.width/2 - game.viewX*game.viewM,
                           context.canvas.height/2 + game.viewY*game.viewM );
-    context.fillStyle = '#00FF00';
-    context.strokeStyle = '#FF0000';
-    var _bin = SpatialHash.bin();
-    var _spatialCellSize = SpatialHash.cellSize();
-    for (var _X in _bin) {
-      for (var _Y in _bin[_X]) {
-        context.strokeRect(_X*_spatialCellSize,_Y*_spatialCellSize,_spatialCellSize,_spatialCellSize);
-      }
-    }
     for (uid in entities) {
       var target = entities[uid];
       if (1){ //is in view?
@@ -159,6 +150,18 @@ var SG = (function(){
         context.fill();
       }
     }
+    var _bin = SpatialHash.bin();
+    var _spatialCellSize = SpatialHash.cellSize();
+    context.fillStyle = '#0000FF';
+    context.strokeStyle = '#FF0000';
+    for (var _X in _bin) {
+      for (var _Y in _bin[_X]) {
+        context.strokeRect(_X*_spatialCellSize,_Y*_spatialCellSize,_spatialCellSize,_spatialCellSize);
+        _bin[_X][_Y].forEach(function(_uid) {
+          context.fillRect(entities[_uid].x,entities[_uid].y,3,3);
+        });
+      }
+    }
     //  Game clock calculations
     game._loopTime += performance.now() - loopStartTime;
     if (game._framecount%3 === 0) {
@@ -167,13 +170,13 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
-                    game.month() + ' - ' + game.season() + '<br>' +
-                    '`dt`: ' + dt + '<br>' +
-                    game.iteration + ' loops<br>' +
-                    game.framerate + 'fps<br>' + game.loopTime + 'ms/loop' +
-                    '<br>' + game.viewX + ' x , ' + game.viewY + ' y, ' + game.viewM + ' mag';
-      info.innerHTML = infoMsg;
+//       var infoMsg = game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
+//                     game.month() + ' - ' + game.season() + '<br>' +
+//                     '`dt`: ' + dt + '<br>' +
+//                     game.iteration + ' loops<br>' +
+//                     game.framerate + 'fps<br>' + game.loopTime + 'ms/loop' +
+//                     '<br>' + game.viewX + ' x , ' + game.viewY + ' y, ' + game.viewM + ' mag';
+//       info.innerHTML = infoMsg;
     }
     loopByMode();
   }
@@ -213,11 +216,17 @@ var SG = (function(){
       }
       return inputs;
     }
+    function mouseToWorldXY(e) {
+      var wx = game.viewX + ((e.clientX - context.canvas.width/2)/game.viewM);
+      var wy = game.viewY - ((e.clientY - context.canvas.height/2)/game.viewM);
+      return [wx,wy];
+    }
     return {
       all:function(){return keyState;},
       getKeyState:function(a){return keyState[a];},
       getClick:getClick,
-      gameplay:getGameplayRelated
+      gameplay:getGameplayRelated,
+      mouseToXY:mouseToWorldXY
     };
   })();
 
@@ -227,15 +236,19 @@ var SG = (function(){
     function hash(a) {return Math.floor(a/CELL_SIZE);}
     function retrieve(x,y,maskUID) {
       var X = hash(x); var Y = hash(y);
-      var XLook = x%CELL_SIZE > CELL_SIZE/2 ? X+1 : X-1;
-      var YLook = y%CELL_SIZE > CELL_SIZE/2 ? Y+1 : Y-1;
-      var selectedUIDs = bin[X][Y].slice();
-      if (bin[X][YLook]) bin[X][YLook].forEach(function(uid){selectedUIDs.push(uid);});
+      var XLook = (x < 0 ? CELL_SIZE+x%CELL_SIZE : x%CELL_SIZE) > CELL_SIZE/2 ? X+1 : X-1;
+      var YLook = (y < 0 ? CELL_SIZE+y%CELL_SIZE : y%CELL_SIZE) > CELL_SIZE/2 ? Y+1 : Y-1;
+      var selectedUIDs = [];
+      if (bin[X]) {
+        if (bin[X][Y]) selectedUIDs = bin[X][Y].slice();
+        if (bin[X][YLook]) bin[X][YLook].forEach(function(uid){selectedUIDs.push(uid);});
+      }
       if (bin[XLook]) {
         if (bin[XLook][YLook]) bin[XLook][YLook].forEach(function(uid){selectedUIDs.push(uid);});
         if (bin[XLook][Y]) bin[XLook][Y].forEach(function(uid){selectedUIDs.push(uid);});
       }
       if (maskUID) selectedUIDs.splice(selectedUIDs.indexOf(maskUID),1);
+      if (!maskUID) ;
       return selectedUIDs;
     }
     function insert(X,Y,UID) {
@@ -325,7 +338,10 @@ var SG = (function(){
         for (var i = neighbors.length; i--;) {
           var neighbor = entities[neighbors[i]];
           var dD = Math.sqrt((neighbor.x-this.x)*(neighbor.x-this.x)+(neighbor.y-this.y)*(neighbor.y-this.y));
-          if (dD < this.radius+neighbor.radius) this.color='rgb(255,0,0)';
+          if (dD < this.radius+neighbor.radius) {
+            this.color='rgb(255,0,0)';
+            i = 0;
+          }
           else this.color='rgb(0,255,0)';
         }
       }
@@ -436,12 +452,18 @@ var SG = (function(){
     mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
 
     //  Make fake world for now...
-    Create.player(10,-10);
-    Create.creature('Dog',220,250);
-    Create.creature('Dog',-100,250);
-    Create.creature('Dog',-290,-117);
-    for (var _i_1 = 40; _i_1--;) Create.creature('Dog',rI(-380,380),rI(-300,300));
+    Create.player(0,0);
+    for (var _i_1 = 100; _i_1--;) Create.creature('Dog',rI(-380,380),rI(-300,300));
 
+      //DEBUG
+    
+    window.addEventListener('mousemove',function(e){
+      var xy = Input.mouseToXY(e);
+      var _uidArray = SpatialHash.retrieve(xy[0],xy[1]);
+      info.innerHTML = e.clientX+'x '+e.clientY+'y --> '+xy[0]+' '+xy[1]+' => '+_uidArray;
+    });
+    
+    
     window.requestAnimationFrame(gameplay);
   }
 
