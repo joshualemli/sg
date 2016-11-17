@@ -7,7 +7,7 @@
 
 var SG = (function(){
 
-  //  HTML ELEMENTS & API, ASSOCIATED LOOP FUNCTIONS
+  //  HTML ELEMENTS & API
   var canvas; // canvas element
   var context; // canvas context element
   var info; // element to output game messages
@@ -64,6 +64,7 @@ var SG = (function(){
     _playerUID: null, // player entity uid
     mode: 'gameplay', // controls loop function via `loopByMode` function
     clickMode: 'plant', // controls click action
+    paused: false,
     iteration: 0, // persistent loop counter
     date: 0, // "minutes" (game time), 1min/17ms
     timeFactor: 1, // minutes (game time) per loop
@@ -112,26 +113,19 @@ var SG = (function(){
     }
   };
 
+  function hideAllEquipment() {
+    [belt,backpack,mobiledevice].forEach(function(item) {
+      if (!item.classList.contains('hide')) item.classList.add('hide');
+    });
+  }
+
   beltMode = function() {
-    context.setTransform(1,0,0,1,0,0);
-    context.clearRect(0,0,context.canvas.width,context.canvas.height);
-    context.fillStyle = '#AAFF00';
-    context.fillRect(400,500,100,100);
   }
   backpackMode = function() {
-    context.setTransform(1,0,0,1,0,0);
-    context.clearRect(0,0,context.canvas.width,context.canvas.height);
-    context.fillStyle = '#FF0000';
-    context.fillRect(400,500,100,200);
-    loopByMode();
   }
   mobiledeviceMode = function() {
-    context.setTransform(1,0,0,1,0,0);
-    context.clearRect(0,0,context.canvas.width,context.canvas.height);
-    context.fillStyle = '#0000FF';
-    context.fillRect(400,500,20,100);
     var player = entities[game.playerUID];
-    DOM.buildType('money',mobiledevice,player.money);
+    DOM.buildType('money',mobiledevice,'test');
   }
   gameplay = function(_t) {
     //  Time
@@ -188,9 +182,10 @@ var SG = (function(){
       game._framerate = 0;
       game._loopTime = 0;
       var debugMsg =
+        '<div class="dev_softpanel">' +
         '`iteration`: ' + game.iteration + '<br>' +
         game.viewX.toFixed(2) + 'x ' + game.viewY.toFixed(2) + 'y ' + game.viewM + 'mag' +
-        '<div class="dev_softpanel">' +
+        '</div><div class="dev_softpanel">' +
         game.years() + 'y ' + game.days() + 'd ' + game.hoursMinutes() + '<br>' +
         game.month() + ' - ' + game.season() +
         '</div><div class="dev_softpanel">' +
@@ -198,7 +193,7 @@ var SG = (function(){
         'sample `dt` per frame: ' + dt + 'ms<sub>real</sub>' +
         '</div><div class="dev_softpanel">' +
         game.framerate + ' fps<br>' +
-        game.loopTime + ' ms/loop<br>' +
+        game.loopTime + ' ms/loop' +
         '</div>';
       debug.innerHTML = debugMsg;
     }
@@ -511,6 +506,7 @@ var SG = (function(){
     belt = document.getElementById('belt');
     backpack = document.getElementById('backpack');
     mobiledevice = document.getElementById('mobiledevice');
+    hideAllEquipment();
     info = document.getElementById('info');
     debug = document.getElementById('debug');
     canvas = document.getElementById('canvas');
@@ -520,17 +516,24 @@ var SG = (function(){
 
     selectGameplay.addEventListener('click',function(){
       game.mode = 'gameplay';
+      hideAllEquipment();
       loopByMode();
     });
     selectBelt.addEventListener('click',function(){
+      hideAllEquipment();
+      belt.classList.remove('hide');
       game.mode = 'belt';
       loopByMode();
     });
     selectBackpack.addEventListener('click',function(){
+      hideAllEquipment();
+      backpack.classList.remove('hide');
       game.mode = 'backpack';
       loopByMode();
     });
     selectMobiledevice.addEventListener('click',function(){
+      hideAllEquipment();
+      mobiledevice.classList.remove('hide');
       game.mode = 'mobiledevice';
       loopByMode();
     });
