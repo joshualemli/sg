@@ -10,9 +10,13 @@ var SG = (function(){
   //  HTML ELEMENTS & API, ASSOCIATED LOOP FUNCTIONS
   var canvas; // canvas element
   var context; // canvas context element
-  var info; // element to output messages
+  var info; // element to output game messages
+  var debug; // element to output debug messages
   var controls; // element to contain UI
-  var sg; // --> `gameplay`
+  var selectGameplay; // --> `gameplay`
+  var selectBelt; // --> view belt
+  var selectBackpack; // --> view equipment in backpack
+  var selectMobiledevice; // --> view mobiledevice
   var belt;
   var backpack;
   var mobiledevice;
@@ -28,6 +32,7 @@ var SG = (function(){
   var Create; // object creation module
   var SpatialHash; // spatial culling module
   var Input; // handle user keyboard & mouse input
+  var DOM; // manipulate DOM
 
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0; // next UID to be created
@@ -112,7 +117,6 @@ var SG = (function(){
     context.clearRect(0,0,context.canvas.width,context.canvas.height);
     context.fillStyle = '#AAFF00';
     context.fillRect(400,500,100,100);
-    loopByMode();
   }
   backpackMode = function() {
     context.setTransform(1,0,0,1,0,0);
@@ -126,14 +130,15 @@ var SG = (function(){
     context.clearRect(0,0,context.canvas.width,context.canvas.height);
     context.fillStyle = '#0000FF';
     context.fillRect(400,500,20,100);
-    loopByMode();
+    var player = entities[game.playerUID];
+    DOM.buildType('money',mobiledevice,player.money);
   }
   gameplay = function(_t) {
     //  Time
     var loopStartTime = performance.now();
     var dt = Math.round(_t - game._currentElapsed_t);
     var dtGM = (game.timeFactor * dt/16.67); // time change in "Game Minutes"
-    if (dtGM > 6) console.log('dtGM > 6');
+    if (dtGM > 6) dtGM = 6; // hard limit to avoid irregular behavior
     game.date += dtGM;
     game._currentElapsed_t = _t;
     game._framerate += dt;
@@ -182,7 +187,7 @@ var SG = (function(){
       game._framecount = 0;
       game._framerate = 0;
       game._loopTime = 0;
-      var infoMsg =
+      var debugMsg =
         '`iteration`: ' + game.iteration + '<br>' +
         game.viewX.toFixed(2) + 'x ' + game.viewY.toFixed(2) + 'y ' + game.viewM + 'mag' +
         '<div class="dev_softpanel">' +
@@ -195,12 +200,31 @@ var SG = (function(){
         game.framerate + ' fps<br>' +
         game.loopTime + ' ms/loop<br>' +
         '</div>';
-      info.innerHTML = infoMsg;
+      debug.innerHTML = debugMsg;
     }
     loopByMode();
   }
 
   //  ***  MODULES  ***  //
+  
+  DOM = (function(){
+    function build(tagName,container,_innerHTML,cssId,cssClass) {
+      var _element = document.createElement(tagName);
+      if (cssId) _element.id = cssId;
+      if (cssClass) _element.className = cssClass;
+      container.appendChild(_element);
+      if (_innerHTML) _element.innerHTML = _innerHTML;
+    }
+    var types = {
+      money:function(container,html){build('div',container,html,null,'money');}
+    };
+    return {
+      build:build,
+      buildType:function(type,container,html) {
+        types[type](container,html);
+      }
+    };
+  })();
 
   Input = (function(){
     var keyState = {};
@@ -314,9 +338,9 @@ var SG = (function(){
     }
 
     //  ***  "Uncoupled" prototypes  ***  //
-    function getCollisions() {
+    function getCollisions(neighbors) {
       var collisions = [];
-      var neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
+      if (!neighbors) neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
       if (neighbors.length) {
         for (var i = neighbors.length; i--;) {
           var neighbor = entities[neighbors[i]];
@@ -350,7 +374,7 @@ var SG = (function(){
     Extend.call(Player,_BasicEntity);
     Player.prototype.getCollisions = getCollisions;
     Player.prototype.step = function() {
-      var neighbors = SpatialHash.retrieve(this.x,this.y,this.uid);
+      var collisions = this.getCollisions();
     };
 
     //  ***  CREATURES  ***  //
@@ -480,20 +504,36 @@ var SG = (function(){
 
   function init() {
     controls = document.getElementById('controls');
-    sg = document.getElementById('sg');
+    selectGameplay = document.getElementById('selectGameplay');
+    selectBelt = document.getElementById('selectBelt');
+    selectBackpack = document.getElementById('selectBackpack');
+    selectMobiledevice = document.getElementById('selectMobiledevice');
     belt = document.getElementById('belt');
     backpack = document.getElementById('backpack');
     mobiledevice = document.getElementById('mobiledevice');
     info = document.getElementById('info');
+    debug = document.getElementById('debug');
     canvas = document.getElementById('canvas');
     context = canvas.getContext('2d');
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
 
-    sg.addEventListener('click',function(){game.mode = 'gameplay';});
-    belt.addEventListener('click',function(){game.mode = 'belt';});
-    backpack.addEventListener('click',function(){game.mode = 'backpack';});
-    mobiledevice.addEventListener('click',function(){game.mode = 'mobiledevice';});
+    selectGameplay.addEventListener('click',function(){
+      game.mode = 'gameplay';
+      loopByMode();
+    });
+    selectBelt.addEventListener('click',function(){
+      game.mode = 'belt';
+      loopByMode();
+    });
+    selectBackpack.addEventListener('click',function(){
+      game.mode = 'backpack';
+      loopByMode();
+    });
+    selectMobiledevice.addEventListener('click',function(){
+      game.mode = 'mobiledevice';
+      loopByMode();
+    });
 
     //  Make fake world for now...
     Create.player(0,0);
@@ -505,7 +545,7 @@ var SG = (function(){
 //     window.addEventListener('mousemove',function(e){
 //       var xy = Input.mouseToXY(e);
 //       var _uidArray = SpatialHash.retrieve(xy[0],xy[1]);
-//       info.innerHTML = e.clientX+'x '+e.clientY+'y --> '+xy[0]+' '+xy[1]+' => '+_uidArray;
+//       debug.innerHTML = e.clientX+'x '+e.clientY+'y --> '+xy[0]+' '+xy[1]+' => '+_uidArray;
 //     });
     
     
