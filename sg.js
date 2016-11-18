@@ -13,23 +13,15 @@ var SG = (function(){
   var info; // element to output game messages
   var debug; // element to output debug messages
   var controls; // element to contain UI
-  var selectGameplay;
-  var selectBelt;
-  var selectBackpack;
-  var selectMobiledevice;
-  var selectStore;
-  var selectAction;
-  var selectItem;
-  var belt;
-  var backpack;
-  var mobiledevice;
-  var store;
-  var actions;
-  var items;
-  var beltElements = {};
-  var backpackElements = {};
-  var mobiledeviceElements = {};
-  var storeElements = {};
+  var panel = {
+    gameplay:{},
+    belt:{},
+    backpack:{},
+    mobiledevice:{},
+    store:{},
+    actions:{},
+    items:{},
+  };
   //  LOOP FUNCTIONS
   var gameplay;
   var beltMode;
@@ -73,7 +65,7 @@ var SG = (function(){
     viewM:1, // scalar (magnification)
     _playerUID: null, // player entity uid
     mode: 'gameplay', // controls loop function via `loopByMode` function
-    clickMode: 'plant', // controls click action
+    actionMode: 'plant', // controls click action (move,deter,plant,inspect,build,harvest);
     paused: false,
     iteration: 0, // persistent loop counter
     date: 0, // "minutes" (game time), 1min/17ms
@@ -123,19 +115,19 @@ var SG = (function(){
     }
   };
 
-  function hideAllEquipment() {
-    [belt,backpack,mobiledevice,store,actions,items].forEach(function(item) {
-      if (!item.classList.contains('hide')) item.classList.add('hide');
+  function hideAllPanels() {
+    ['belt','backpack','mobiledevice','store','actions','items'].forEach(function(item) {
+      if (!panel[item].container.classList.contains('hide')) panel[item].container.classList.add('hide');
     });
   }
   function buildActions() {
   }
   function buildItems() {
-    DOM.empty(items);
-    var _items = entities[game.playerUID].items;
-    _items.forEach(function(item) {
-      DOM.build('div',items,item.name,null,null);
-    });
+//     DOM.empty(items);
+//     var _items = entities[game.playerUID].items;
+//     _items.forEach(function(item) {
+//       DOM.build('div',items,item.name,null,null);
+//     });
   }
 
   beltMode = function() {
@@ -144,7 +136,7 @@ var SG = (function(){
   };
   mobiledeviceMode = function() {
     var player = entities[game.playerUID];
-    mobiledeviceElements.clock.innerHTML = game.years()+'y '+game.days()+'d '+game.hoursMinutes();
+    panel.mobiledevice.clock.innerHTML = game.years()+'y '+game.days()+'d '+game.hoursMinutes();
   };
   gameplay = function(_t) {
     //  Time
@@ -161,7 +153,7 @@ var SG = (function(){
     var inputs = Input.gameplay();
     for (var command in inputs) if (inputs[command]) commands[command]();
     var click = Input.getClick(true);
-    if (click) commands[game.clickMode](click);
+    if (click) commands[game.actionMode](click);
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
     //  Graphics
@@ -371,6 +363,10 @@ var SG = (function(){
       for (var key in source.prototype) this.prototype[key] = source.prototype[key];
       this.prototype.constructor = this;
     }
+    function Name(common,binomial) {
+      this.prototype.commonName = common;
+      this.prototype.binomialNomenclature = binomial;
+    }
 
     //  ***  "Uncoupled" prototypes  ***  //
     function getCollisions(neighbors) {
@@ -452,6 +448,7 @@ var SG = (function(){
       this.dy = 0;
     };
     Extend.call(Creature._Creature,_BasicEntity);
+    Name.call(Creature._Creature,'Creature','Animus anonymous');
     Creature._Creature.prototype.getCollisions = getCollisions;
     Creature._Creature.prototype.step = function() {
       //this.radius -= 1/this.endurance;
@@ -477,26 +474,15 @@ var SG = (function(){
       this.radius = 5;
     };
     Extend.call(Creature.Dog,Creature._Creature);
+    Name.call(Creature.Dog,'Dog','Canus lupus familiaris');
 
-    Creature.Labrador = function() {
-      Creature.Dog.call(this);
-    };
-    Extend.call(Creature.Labrador,Creature.Dog);
-    
-    Creature.Mutt = function(){};
-    
+    //  Labrador, Mutt, etc...    
     //  Horses
-    
     //  Llamas
-    
     //  Cows
-    
     //  Chickens
-    
     //  Cats
-    
     //  Rabbits
-    
     //  Mice
 
     //  ***  GROWTHS  ***  //
@@ -518,15 +504,39 @@ var SG = (function(){
       this.value = 1;
     };
     Extend.call(Growth.Parsley,Growth._Growth);
+    Name.call(Growth.Parsley,'Parsley','Petroselinum crispum');
+
+    //  ***  "INSTANCES"  ***  //
+
+    var Instances = {
+      creature:{},
+      growth:{},
+    };
+    (function(){ var type;
+      for (type in Creature) Instances.creature[type] = new Creature[type]();
+      for (type in Growth) Instances.growth[type] = new Growth[type]();
+    })();
+
 
     //  ***  ITEMS  ***  //
 
-    var Item = {};
-    Item._Item = function() {_BasicEntity.call(this);};
-    Extend.call(Item._Item,_BasicEntity);
+    var Equipment = {};
+
+    Equipment.Seed = function() {
+      this.growthName = '';
+      this.name = 'seed';
+      this.quantity = 0;
+      this.cost = 0;
+    }
+
+    Equipment._Item = function() {
+      this.name = '';
+      this.cost = 0;
+      this.slot = ''; // corresponds to beltslot (`game.actionMode` domain)
+    };
 
     function transmogrifyUID(n,exp) {
-      exp = exp || 0;
+      if (!exp) exp = 0;
       var _value = Math.pow(52,exp);
       var R = n % (_value*52);
       var char = R/_value;
@@ -538,43 +548,36 @@ var SG = (function(){
       return str;
     }
 
-    function make(category,type,x,y) {
+    function make(category,type,params) {
       var _entity;
       switch(category) {
         case 'Player': _entity = new Player(); break;
         case 'Creature': _entity = new Creature[type](); break;
         case 'Growth': _entity = new Growth[type](); break;
-        case 'Item': _entity = new Item[type](); break;
+        case 'Equipment': _entity = new Equipment[type](); break;
         default: return null;
       }
-      _entity.uid = transmogrifyUID(_UID);
-      if (category === 'Player') game.playerUID = _entity.uid;
-      _UID += 1;
-      _entity.x = x;
-      _entity.y = y;
-      entities[_entity.uid] = _entity;
-      SpatialHash.insert(_entity.x,_entity.y,_entity.uid);
+      for (var key in params) _entity[key] = params[key];
+      if (category === 'Equipment') {
+        if (type === 'Seed') {
+          _entity.plantInfo = Instances.growth[_entity.growthName];
+        }
+      }
+      else {
+        _entity.uid = transmogrifyUID(_UID);
+        _UID += 1;
+        if (category === 'Player') game.playerUID = _entity.uid;
+        entities[_entity.uid] = _entity;
+        SpatialHash.insert(_entity.x,_entity.y,_entity.uid);
+      }
       return _entity;
     }
-    
-    var Instances = {
-      creature:{},
-      growth:{},
-      item:{}
-    };
-    (function(){
-      var type;
-      for (type in Creature) Instances.creature[type] = new Creature[type]();
-      for (type in Growth) Instances.growth[type] = new Growth[type]();
-      for (type in Item) Instances.item[type] = new Item[type]();
-    })();
-    console.log(Instances);
 
     return {
-      player:function(x,y){return make('Player',null,x,y);},
-      creature:function(a,x,y){return make('Creature',a,x,y);},
-      growth:function(a,x,y){return make('Growth',a,x,y);},
-      item:function(a,x,y){return make('Item',a,x,y);},
+      player:function(x,y){return make('Player',null,{x:x,y:y});},
+      creature:function(a,x,y){return make('Creature',a,{x:x,y:y});},
+      growth:function(a,x,y){return make('Growth',a,{x:x,y:y});},
+      equipment:function(a,p){return make('Equipment',a,p);},
       clone:function(cat,type){return Instances[cat][type]();}
     };
 
@@ -582,29 +585,29 @@ var SG = (function(){
 
   function init() {
     controls = document.getElementById('controls');
-    selectGameplay = document.getElementById('selectGameplay');
-    selectBelt = document.getElementById('selectBelt');
-    selectBackpack = document.getElementById('selectBackpack');
-    selectMobiledevice = document.getElementById('selectMobiledevice');
-    selectStore = document.getElementById('selectStore');
-    selectAction = document.getElementById('selectAction');
-    selectItem = document.getElementById('selectItem');
+    panel.gameplay.selector = document.getElementById('selectGameplay');
+    panel.belt.selector = document.getElementById('selectBelt');
+    panel.backpack.selector = document.getElementById('selectBackpack');
+    panel.mobiledevice.selector = document.getElementById('selectMobiledevice');
+    panel.store.selector = document.getElementById('selectStore');
+    panel.actions.selector = document.getElementById('selectAction');
+    panel.items.selector = document.getElementById('selectItem');
 
-    belt = document.getElementById('belt');
-    backpack = document.getElementById('backpack');
-    mobiledevice = document.getElementById('mobiledevice');
-    store = document.getElementById('store');
-    actions = document.getElementById('actions');
-    items = document.getElementById('items');
-    hideAllEquipment();
+    panel.belt.container = document.getElementById('belt');
+    panel.backpack.container = document.getElementById('backpack');
+    panel.mobiledevice.container = document.getElementById('mobiledevice');
+    panel.store.container = document.getElementById('store');
+    panel.actions.container = document.getElementById('actions');
+    panel.items.container = document.getElementById('items');
+    hideAllPanels();
 
-    mobiledeviceElements.clock = document.getElementById('md_clock');
-    mobiledeviceElements.sleep = document.getElementById('md_sleep');
-    mobiledeviceElements.money = document.getElementById('md_money');
-    mobiledeviceElements.save = document.getElementById('md_saveGame');
-    mobiledeviceElements.load = document.getElementById('md_loadGame');
-    mobiledeviceElements.options = document.getElementById('md_options');
-    
+    panel.mobiledevice.clock = document.getElementById('md_clock');
+    panel.mobiledevice.sleep = document.getElementById('md_sleep');
+    panel.mobiledevice.money = document.getElementById('md_money');
+    panel.mobiledevice.save = document.getElementById('md_saveGame');
+    panel.mobiledevice.load = document.getElementById('md_loadGame');
+    panel.mobiledevice.options = document.getElementById('md_options');
+
     info = document.getElementById('info');
     debug = document.getElementById('debug');
     canvas = document.getElementById('canvas');
@@ -612,44 +615,44 @@ var SG = (function(){
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
 
-    selectGameplay.addEventListener('click',function(){
+    panel.gameplay.selector.addEventListener('click',function(){
       game.mode = 'gameplay';
-      hideAllEquipment();
+      hideAllPanels();
       loopByMode();
     });
-    selectBelt.addEventListener('click',function(){
-      hideAllEquipment();
-      belt.classList.remove('hide');
+    panel.belt.selector.addEventListener('click',function(){
+      hideAllPanels();
+      panel.belt.container.classList.remove('hide');
       game.mode = 'belt';
       loopByMode();
     });
-    selectBackpack.addEventListener('click',function(){
-      hideAllEquipment();
-      backpack.classList.remove('hide');
+    panel.backpack.selector.addEventListener('click',function(){
+      hideAllPanels();
+      panel.backpack.container.classList.remove('hide');
       game.mode = 'backpack';
       loopByMode();
     });
-    selectMobiledevice.addEventListener('click',function(){
-      hideAllEquipment();
-      mobiledevice.classList.remove('hide');
+    panel.mobiledevice.selector.addEventListener('click',function(){
+      hideAllPanels();
+      panel.mobiledevice.container.classList.remove('hide');
       game.mode = 'mobiledevice';
       loopByMode();
     });
-    selectStore.addEventListener('click',function(){
-      hideAllEquipment();
-      store.classList.remove('hide');
+    panel.store.selector.addEventListener('click',function(){
+      hideAllPanels();
+      panel.store.container.classList.remove('hide');
       game.mode = 'store';
       loopByMode();
     });
-    selectAction.addEventListener('click',function(){
-      hideAllEquipment();
+    panel.actions.selector.addEventListener('click',function(){
+      hideAllPanels();
       buildActions();
-      selectAction.classList.remove('hide');
+      panel.actions.container.classList.remove('hide');
     });
-    selectItem.addEventListener('click',function(){
-      hideAllEquipment();
+    panel.items.selector.addEventListener('click',function(){
+      hideAllPanels();
       buildItems();
-      selectItem.classList.remove('hide');
+      panel.items.container.classList.remove('hide');
     });
     
     Input.init();
