@@ -18,10 +18,14 @@ var SG = (function(){
   var selectBackpack;
   var selectMobiledevice;
   var selectStore;
+  var selectAction;
+  var selectItem;
   var belt;
   var backpack;
   var mobiledevice;
   var store;
+  var actions;
+  var items;
   var beltElements = {};
   var backpackElements = {};
   var mobiledeviceElements = {};
@@ -120,8 +124,17 @@ var SG = (function(){
   };
 
   function hideAllEquipment() {
-    [belt,backpack,mobiledevice,store].forEach(function(item) {
+    [belt,backpack,mobiledevice,store,actions,items].forEach(function(item) {
       if (!item.classList.contains('hide')) item.classList.add('hide');
+    });
+  }
+  function buildActions() {
+  }
+  function buildItems() {
+    DOM.empty(items);
+    var _items = entities[game.playerUID].items;
+    _items.forEach(function(item) {
+      DOM.build('div',items,item.name,null,null);
     });
   }
 
@@ -168,20 +181,23 @@ var SG = (function(){
         context.fill();
       }
     }
-    var _qLastX=0,_qLastY=0;
-    context.strokeStyle = 'rgba(0,255,255,0.5)';
-    context.lineWidth = 2;
-    context.fillStyle = 'rgba(0,255,0,0.5)';
-    entities[game.playerUID].queue.forEach(function(item,i){
-      context.fillRect(item.x-2,item.y-2,5,5);
-      context.beginPath();
-      if (i === 0) context.moveTo(entities[game.playerUID].x,entities[game.playerUID].y);
-      else context.moveTo(_qLastX,_qLastY);
-      context.lineTo(item.x,item.y);
-      context.stroke();
-      _qLastX = item.x;
-      _qLastY = item.y;
-    });
+    //  Draw player queue
+    if (entities[game.playerUID].queue.length) {
+      var _qLastX=0,_qLastY=0;
+      context.strokeStyle = 'rgba(0,255,255,0.5)';
+      context.lineWidth = 2;
+      context.fillStyle = 'rgba(0,255,0,0.5)';
+      entities[game.playerUID].queue.forEach(function(item,i){
+        context.fillRect(item.x-2,item.y-2,5,5);
+        context.beginPath();
+        if (i === 0) context.moveTo(entities[game.playerUID].x,entities[game.playerUID].y);
+        else context.moveTo(_qLastX,_qLastY);
+        context.lineTo(item.x,item.y);
+        context.stroke();
+        _qLastX = item.x;
+        _qLastY = item.y;
+      });
+    }
     /* draw spatial hash bins
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
@@ -229,6 +245,7 @@ var SG = (function(){
       if (cssClass) _element.className = cssClass;
       container.appendChild(_element);
       if (_innerHTML) _element.innerHTML = _innerHTML;
+      return _element;
     }
     function empty(_element) {
       while (_element.firstChild) {
@@ -387,7 +404,7 @@ var SG = (function(){
       this.level = 1;
       this.radius = 10;
       this.money = 0;
-      this.items = [];
+      this.items = [{}];
       this.queue = [];
     };
     Extend.call(Player,_BasicEntity);
@@ -539,12 +556,26 @@ var SG = (function(){
       SpatialHash.insert(_entity.x,_entity.y,_entity.uid);
       return _entity;
     }
+    
+    var Instances = {
+      creature:{},
+      growth:{},
+      item:{}
+    };
+    (function(){
+      var type;
+      for (type in Creature) Instances.creature[type] = new Creature[type]();
+      for (type in Growth) Instances.growth[type] = new Growth[type]();
+      for (type in Item) Instances.item[type] = new Item[type]();
+    })();
+    console.log(Instances);
 
     return {
       player:function(x,y){return make('Player',null,x,y);},
       creature:function(a,x,y){return make('Creature',a,x,y);},
       growth:function(a,x,y){return make('Growth',a,x,y);},
-      item:function(a,x,y){return make('Item',a,x,y);}
+      item:function(a,x,y){return make('Item',a,x,y);},
+      clone:function(cat,type){return Instances[cat][type]();}
     };
 
   })(); // end `Create` module
@@ -556,11 +587,15 @@ var SG = (function(){
     selectBackpack = document.getElementById('selectBackpack');
     selectMobiledevice = document.getElementById('selectMobiledevice');
     selectStore = document.getElementById('selectStore');
+    selectAction = document.getElementById('selectAction');
+    selectItem = document.getElementById('selectItem');
 
     belt = document.getElementById('belt');
     backpack = document.getElementById('backpack');
     mobiledevice = document.getElementById('mobiledevice');
     store = document.getElementById('store');
+    actions = document.getElementById('actions');
+    items = document.getElementById('items');
     hideAllEquipment();
 
     mobiledeviceElements.clock = document.getElementById('md_clock');
@@ -605,6 +640,16 @@ var SG = (function(){
       store.classList.remove('hide');
       game.mode = 'store';
       loopByMode();
+    });
+    selectAction.addEventListener('click',function(){
+      hideAllEquipment();
+      buildActions();
+      selectAction.classList.remove('hide');
+    });
+    selectItem.addEventListener('click',function(){
+      hideAllEquipment();
+      buildItems();
+      selectItem.classList.remove('hide');
     });
     
     Input.init();
