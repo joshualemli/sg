@@ -7,13 +7,32 @@
   </head>
   <body>
     <div id='info'></div>
+    <div id='debug'></div>
     <div id='controls'>
-      <div id='sg' class='control-item'></div>
-      <div id='belt' class='control-item'></div>
-      <div id='backpack' class='control-item'></div>
-      <div id='mobiledevice' class='control-item'></div>
+      <div id='selectGameplay' class='control-item'></div>
+      <div id='selectBelt' class='control-item'></div>
+      <div id='selectBackpack' class='control-item'></div>
+      <div id='selectMobiledevice' class='control-item'></div>
+      <div id='selectStore' class='control-item'></div>
+      <div id='selectAction' class='control-item'></div>
+      <div id='selectItem' class='control-item'></div>
     </div>
-    <div id='changeView'></div>
+    <div id='belt' class='equipment'></div><!-- Belt -->
+    <div id='backpack' class='equipment'><!-- Backpack -->
+      <div id='gear'></div>
+      <div id='seeds'></div>
+    </div>
+    <div id='mobiledevice' class='equipment'><!-- Mobile device -->
+      <div id='md_clock'></div>
+      <div id='md_sleep'></div>
+      <div id='md_money'></div>
+      <div id='md_saveGame'></div>
+      <div id='md_loadGame'></div>
+      <div id='md_options'></div>
+    </div>
+    <div id='store' class='equipment'></div><!-- Store -->
+    <div id='actions'></div>
+    <div id='items'></div>
     <canvas id='canvas'></canvas>
   </body>
 </html>
