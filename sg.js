@@ -1,5 +1,5 @@
 
-//    Sarah's Garden
+//    Sarah's Garden v4.0.0
 //    Joshua A. Lemli
 //    2016
 
@@ -13,13 +13,19 @@ var SG = (function(){
   var info; // element to output game messages
   var debug; // element to output debug messages
   var controls; // element to contain UI
-  var selectGameplay; // --> `gameplay`
-  var selectBelt; // --> view belt
-  var selectBackpack; // --> view equipment in backpack
-  var selectMobiledevice; // --> view mobiledevice
+  var selectGameplay;
+  var selectBelt;
+  var selectBackpack;
+  var selectMobiledevice;
+  var selectStore;
   var belt;
   var backpack;
   var mobiledevice;
+  var store;
+  var beltElements = {};
+  var backpackElements = {};
+  var mobiledeviceElements = {};
+  var storeElements = {};
   //  LOOP FUNCTIONS
   var gameplay;
   var beltMode;
@@ -114,19 +120,19 @@ var SG = (function(){
   };
 
   function hideAllEquipment() {
-    [belt,backpack,mobiledevice].forEach(function(item) {
+    [belt,backpack,mobiledevice,store].forEach(function(item) {
       if (!item.classList.contains('hide')) item.classList.add('hide');
     });
   }
 
   beltMode = function() {
-  }
+  };
   backpackMode = function() {
-  }
+  };
   mobiledeviceMode = function() {
     var player = entities[game.playerUID];
-    DOM.buildType('money',mobiledevice,'test');
-  }
+    mobiledeviceElements.clock.innerHTML = game.years()+'y '+game.days()+'d '+game.hoursMinutes();
+  };
   gameplay = function(_t) {
     //  Time
     var loopStartTime = performance.now();
@@ -141,7 +147,7 @@ var SG = (function(){
     //  Input
     var inputs = Input.gameplay();
     for (var command in inputs) if (inputs[command]) commands[command]();
-    var click = Input.getClick();
+    var click = Input.getClick(true);
     if (click) commands[game.clickMode](click);
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
@@ -162,6 +168,20 @@ var SG = (function(){
         context.fill();
       }
     }
+    var _qLastX=0,_qLastY=0;
+    context.strokeStyle = 'rgba(0,255,255,0.5)';
+    context.lineWidth = 2;
+    context.fillStyle = 'rgba(0,255,0,0.5)';
+    entities[game.playerUID].queue.forEach(function(item,i){
+      context.fillRect(item.x-2,item.y-2,5,5);
+      context.beginPath();
+      if (i === 0) context.moveTo(entities[game.playerUID].x,entities[game.playerUID].y);
+      else context.moveTo(_qLastX,_qLastY);
+      context.lineTo(item.x,item.y);
+      context.stroke();
+      _qLastX = item.x;
+      _qLastY = item.y;
+    });
     /* draw spatial hash bins
     var _bin = SpatialHash.bin();
     var _spatialCellSize = SpatialHash.cellSize();
@@ -198,7 +218,7 @@ var SG = (function(){
       debug.innerHTML = debugMsg;
     }
     loopByMode();
-  }
+  };
 
   //  ***  MODULES  ***  //
   
@@ -210,14 +230,14 @@ var SG = (function(){
       container.appendChild(_element);
       if (_innerHTML) _element.innerHTML = _innerHTML;
     }
-    var types = {
-      money:function(container,html){build('div',container,html,null,'money');}
-    };
+    function empty(_element) {
+      while (_element.firstChild) {
+        _element.removeChild(_element.firstChild);
+      }
+    }
     return {
       build:build,
-      buildType:function(type,container,html) {
-        types[type](container,html);
-      }
+      empty:empty,
     };
   })();
 
@@ -244,9 +264,6 @@ var SG = (function(){
       }
       else return false;
     }
-    window.addEventListener('keydown',keyDown);
-    window.addEventListener('keyup',keyUp);
-    window.addEventListener('click',registerClick);
     var binds = {
       up:'ArrowUp',
       down:'ArrowDown',
@@ -262,12 +279,18 @@ var SG = (function(){
       }
       return inputs;
     }
+    function init() {
+      window.addEventListener('keydown',keyDown);
+      window.addEventListener('keyup',keyUp);
+      canvas.addEventListener('click',registerClick);
+    }
     return {
       all:function(){return keyState;},
       getKeyState:function(a){return keyState[a];},
       gameplay:getGameplayRelated,
       mouseToXY:mouseToWorldXY,
-      getClick:getClick
+      getClick:getClick,
+      init:init
     };
   })();
 
@@ -360,6 +383,7 @@ var SG = (function(){
 
     var Player = function() {
       _BasicEntity.call(this);
+      this.speed = 1;
       this.level = 1;
       this.radius = 10;
       this.money = 0;
@@ -368,7 +392,35 @@ var SG = (function(){
     };
     Extend.call(Player,_BasicEntity);
     Player.prototype.getCollisions = getCollisions;
+    Player.prototype.plant = function(name,x,y) {
+      var pdx = x-this.x;
+      var pdy = y-this.y;
+      var dD = Math.sqrt(pdx*pdx+pdy*pdy);
+      if (dD <= this.radius) {
+        Create.growth(name,x,y);
+        this.dx = 0;
+        this.dy = 0;
+        return true;
+      }
+      else {
+        var scalar = dD*dD/(this.speed*this.speed);
+        this.dx = Math.sqrt(pdx*pdx/scalar)*Math.sign(pdx);
+        this.dy = Math.sqrt(pdy*pdy/scalar)*Math.sign(pdy);
+        return false;
+      }
+    };
     Player.prototype.step = function() {
+      if (this.queue.length) {
+        var task = this.queue[0];
+        if (this[task.type](task.item,task.x,task.y)) this.queue.shift();
+      }
+      if (this.dx || this.dy) {
+        var xi = this.x;
+        var yi = this.y;
+        this.x += this.dx;
+        this.y += this.dy;
+        SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
+      }
       var collisions = this.getCollisions();
     };
 
@@ -503,10 +555,21 @@ var SG = (function(){
     selectBelt = document.getElementById('selectBelt');
     selectBackpack = document.getElementById('selectBackpack');
     selectMobiledevice = document.getElementById('selectMobiledevice');
+    selectStore = document.getElementById('selectStore');
+
     belt = document.getElementById('belt');
     backpack = document.getElementById('backpack');
     mobiledevice = document.getElementById('mobiledevice');
+    store = document.getElementById('store');
     hideAllEquipment();
+
+    mobiledeviceElements.clock = document.getElementById('md_clock');
+    mobiledeviceElements.sleep = document.getElementById('md_sleep');
+    mobiledeviceElements.money = document.getElementById('md_money');
+    mobiledeviceElements.save = document.getElementById('md_saveGame');
+    mobiledeviceElements.load = document.getElementById('md_loadGame');
+    mobiledeviceElements.options = document.getElementById('md_options');
+    
     info = document.getElementById('info');
     debug = document.getElementById('debug');
     canvas = document.getElementById('canvas');
@@ -537,6 +600,14 @@ var SG = (function(){
       game.mode = 'mobiledevice';
       loopByMode();
     });
+    selectStore.addEventListener('click',function(){
+      hideAllEquipment();
+      store.classList.remove('hide');
+      game.mode = 'store';
+      loopByMode();
+    });
+    
+    Input.init();
 
     //  Make fake world for now...
     Create.player(0,0);
