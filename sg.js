@@ -370,6 +370,11 @@ var SG = (function(){
       this.prototype.commonName = common;
       this.prototype.binomialNomenclature = binomial;
     }
+    function AddPrototypes(props) {
+      for (var pName in props) {
+        this.prototype[pName] = props[pName];
+      }
+    }
 
     //  ***  "Uncoupled" prototypes  ***  //
     function getCollisions(neighbors) {
@@ -537,12 +542,15 @@ var SG = (function(){
     
     Growth.Parsley = function() {
       Growth._Growth.call(this);
-      this.maxRadius = 3;
-      this.value = 0.5;
-      this.cost = 0.03;
     };
     Extend.call(Growth.Parsley,Growth._Growth);
     Name.call(Growth.Parsley,'Parsley','Petroselinum crispum');
+    AddPrototypes.call(Growth.Parsley,{
+      maxRadius: 3,
+      value: 0.5,
+      cost: 0.03
+    });
+
 
     Growth.Dandelion = function() {
       Growth._Growth.call(this);
@@ -626,7 +634,7 @@ var SG = (function(){
       growth:function(a,x,y){return make('Growth',a,{x:x,y:y});},
       equipment:function(a,p){return make('Equipment',a,p);},
       seed:function(p){return make('Seed',null,p);},
-      clone:function(cat,type){return Instances[cat][type]();}
+      clone:function(cat,type){return Instances[cat][type];}
     };
 
   })(); // end `Create` module
@@ -671,9 +679,11 @@ var SG = (function(){
         panel.actions[a].addEventListener('click',function(e) { // create event listener
           panel.actions[game.actionMode].classList.remove('action-selected');
           panel.actions[a].classList.add('action-selected');
+          game.actionMode = a;
         });
       });
     })(['move','inspect','plant','harvest','build','repel']);
+    panel.actions[game.actionMode].classList.add('action-selected');
 
     info = document.getElementById('info');
     debug = document.getElementById('debug');
@@ -695,25 +705,38 @@ var SG = (function(){
         hideAllPanels();
         panel[a].container.classList.remove('hide');
         game.mode = a;
+        return true;
       }
       else {
         panel[a].container.classList.add('hide');
         game.mode = 'gameplay';
         window.requestAnimationFrame(gameplay);
+        return false;
       }
     }
     panel.belt.selector.addEventListener('click',function(){
-      basicPanelHandler('belt');
+      if (basicPanelHandler('belt')) ;
     });
     panel.backpack.selector.addEventListener('click',function(){
-      basicPanelHandler('backpack');
+      if (basicPanelHandler('backpack')) ;
     });
     panel.mobiledevice.selector.addEventListener('click',function(){
-      basicPanelHandler('mobiledevice');
+      if (basicPanelHandler('mobiledevice')) ;
     });
     panel.store.selector.addEventListener('click',function(){
-      basicPanelHandler('store');
-      panel.store.playersMoney.innerHTML = '$'+entities[game.playerUID].money;
+      if (basicPanelHandler('store')) {
+        panel.store.playersMoney.innerHTML = '$'+entities[game.playerUID].money;
+        DOM.empty(panel.store.inventory);
+        var seeds = ['Dandelion','Parsley'];
+        seeds.forEach(function(seed){
+          var clone = Create.clone('growth',seed);
+          var html =
+            '<img class="store-image" src="'+'">'+
+            '<span class="store-commonName">'+clone.commonName+'</span><br>'+
+            '<span class="store-bN">'+clone.binomialNomenclature+'</span>';
+          DOM.build('div',panel.store.inventory,html,null,null);
+        });
+      }
     });
     panel.actions.selector.addEventListener('click',function() {
       if (panel.actions.container.classList.contains('hide')) {
