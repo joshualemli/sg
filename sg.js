@@ -115,11 +115,12 @@ var SG = (function(){
     plant: function(p) {
       var player = entities[game.playerUID];
       player.seeds.forEach(function(seed){
-        if (seed.groth === p.growth && seed.quantity > 0) {
-          player.queue.push({x:p.x,y:p.y,action:'plant',growth:'Parsley'});
-          return;
+        if (seed.growth === game.seedSelection && seed.quantity > 0) {
+          player.queue.push({x:p.x,y:p.y,action:'plant',growth:game.seedSelection});
+          return true;
         }
       });
+      return false;
     }
   };
 
@@ -133,13 +134,19 @@ var SG = (function(){
     
   }
   function buildItems() {
-    var _items = [];
-    if (game.actionMode==='plant') _items = entities[game.playerUID].seeds;
     DOM.empty(panel.items.container);
-    _items.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
-    _items.forEach(function(item){
-      DOM.build('div',panel.items.container,item.growth+' - '+item.quantity,null,null);
-    });
+    var _items = [];
+    if (game.actionMode==='plant') {
+      _items = entities[game.playerUID].seeds;
+      _items.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
+      _items.forEach(function(item){
+        var _id = 'items-seed-'+item.growth;
+        DOM.build('div',panel.items.container,item.growth+' - '+item.quantity,_id,null);
+        document.getElementById(_id).addEventListener('click',function(e){
+          game.seedSelection = item.growth;
+        });
+      });
+    }
   }
 
   beltMode = function() {
@@ -256,9 +263,14 @@ var SG = (function(){
         _element.removeChild(_element.firstChild);
       }
     }
+    function addListener(_element,trigger,callback,paramObject) {
+      if (paramObject) _element.addEventListener(trigger,function(e){callback(e,paramObject);});
+      else _element.addEventListener(trigger,callback);
+    }
     return {
       build:build,
       empty:empty,
+      addListener:addListener
     };
   })();
 
@@ -426,23 +438,29 @@ var SG = (function(){
     };
     Extend.call(Player,_BasicEntity);
     Player.prototype.getCollisions = getCollisions;
+    Player.prototype.trimQueue = function(key,value) {
+      for (var i = this.queue.length; i--;) {
+        if (this.queue[i][key] === value) this.queue.splice(i,1);
+      }
+    };
     Player.prototype.plant = function(task) {
       var pdx = task.x-this.x;
       var pdy = task.y-this.y;
       var dD = Math.sqrt(pdx*pdx+pdy*pdy);
       if (dD <= this.radius) {
         Create.growth(task.growth,task.x,task.y);
-        if (this.seeds.length) for (var i = this.seeds.length; i--;) if (this.seeds[i].growth === task.growth) {
-          this.seeds[i].quantity -= 1;
-          if (this.seeds[i].quantity === 0) {
-            for (var j = this.queue.length; j--;) {
-              if (this.queue[j].growth === this.seeds[i].growth) this.queue.splice(j,1);
-            }
-            delete this.seeds[i];
-          }
-          buildItems();
+        var _seed,_index;
+        for (var i = this.seeds.length; i--;) if (this.seeds[i].growth === task.growth) {
+          _seed = this.seeds[i];
+          _index = i;
           break;
         }
+        _seed.quantity -= 1;
+        if (_seed.quantity === 0) {
+          this.trimQueue('growth',_seed.growth);
+          this.seeds.slice(_index,1);
+        }
+        buildItems();
         this.dx = 0;
         this.dy = 0;
         return true;
@@ -706,6 +724,7 @@ var SG = (function(){
     //  Make fake world for now...
     var _player = Create.player(0,0);
     _player.seeds.push(Create.seed({growth:'Parsley',quantity:25}));
+    _player.seeds.push(Create.seed({growth:'Dandelion',quantity:25}));
     for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
     for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
 

@@ -14,7 +14,7 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
 #controls {
   z-index:30; display:inline-block;
   position:absolute; top:0; left:0;
-  height:70px;
+  height:50px;
 }
   .control-item {
     z-index:32; float:left;
@@ -61,17 +61,17 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
 #mobiledevice {
   background:rgba(30,220,0,0.5);
 }
-  #md_clock {
+  #md-clock {
   }
-  #md_sleep {
+  #md-sleep {
   }
-  #md_money {
+  #md-money {
   }
-  #md_saveGame {
+  #md-saveGame {
   }
-  #md_loadGame {
+  #md-loadGame {
   }
-  #md_options {
+  #md-options {
   }
 #store {
   background:rgba(100,0,0,0.5);
