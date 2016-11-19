@@ -99,6 +99,7 @@ var SG = (function(){
     right: function() {game.viewX += 10/game.viewM;},
     magIncrease: function() {game.viewM = (game.viewM*1.01).toFixed(4);},
     magDecrease: function() {game.viewM = (game.viewM*0.99).toFixed(4);},
+    move: function(p) {},
     plant: function(p) {
       var player = entities[game.playerUID];
       player.seeds.forEach(function(seed){
@@ -108,7 +109,11 @@ var SG = (function(){
         }
       });
       return false;
-    }
+    },
+    harvest: function(p) {},
+    deter: function(p) {},
+    inspect: function(p) {},
+    build: function(p) {}
   };
 
   function hideAllPanels() {
@@ -404,7 +409,16 @@ var SG = (function(){
 
     var Player = function() {
       _BasicEntity.call(this);
-      this.speed = 1;
+      this.movement = {
+        _ready: false,
+        _recalcTrajectoryCounter: 0,
+        active: false,
+        dx: 0,
+        dy: 0,
+        speed: 1,
+        destination: [0,0], // as [x,y]
+        targetUID: 'str'
+      };
       this.level = 1;
       this.radius = 10;
       this.money = 0;
@@ -435,11 +449,36 @@ var SG = (function(){
         if (this.queue[i][key] === value) this.queue.splice(i,1);
       }
     };
-    Player.prototype.plant = function(task) {
-      var pdx = task.x-this.x;
-      var pdy = task.y-this.y;
+    Player.prototype.setDestination = function(x,y) {
+      if (this.movement.destination[0] === x && this.movement.destination[1] === y) {
+        if (this.movement._recalcTrajectoryCounter > 0) {
+          this.movement._recalcTrajectoryCounter -= 1;
+          return true;
+        }
+      }
+      else {
+        this.movement.destination[0] = x; this.movement.destination[1] = y;
+      }
+      var pdx = x-this.x;
+      var pdy = y-this.y;
       var dD = Math.sqrt(pdx*pdx+pdy*pdy);
-      if (dD <= this.radius) {
+      if (dD > this.radius) {
+        this.movement.active = true;
+        var scalar = dD*dD/(this.movement.speed*this.movement.speed);
+        this.movement.dx = Math.sqrt(pdx*pdx/scalar)*Math.sign(pdx);
+        this.movement.dy = Math.sqrt(pdy*pdy/scalar)*Math.sign(pdy);
+        if (dD > this.movement.speed*9+this.radius) {
+          this.movement._recalcTrajectoryCounter = 8;
+        }
+        return true;
+      }
+      else {
+        this.movement.active = false;
+        return false;
+      }
+    };
+    Player.prototype.plant = function(task) {
+      if (!this.setDestination(task.x,task.y)) {
         Create.growth(task.growth,task.x,task.y);
         var _seed,_index;
         for (var i = this.seeds.length; i--;) if (this.seeds[i].growth === task.growth) {
@@ -457,25 +496,21 @@ var SG = (function(){
         this.dy = 0;
         return true;
       }
-      else {
-        var scalar = dD*dD/(this.speed*this.speed);
-        this.dx = Math.sqrt(pdx*pdx/scalar)*Math.sign(pdx);
-        this.dy = Math.sqrt(pdy*pdy/scalar)*Math.sign(pdy);
-        return false;
-      }
+      else return false;
+    };
+    Player.prototype.traverseWorld = function() {
+      var xi = this.x;
+      var yi = this.y;
+      this.x += this.movement.dx;
+      this.y += this.movement.dy;
+      SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
     };
     Player.prototype.step = function() {
       if (this.queue.length) {
         var task = this.queue[0];
         if (this[task.action](task)) this.queue.shift();
       }
-      if (this.dx || this.dy) {
-        var xi = this.x;
-        var yi = this.y;
-        this.x += this.dx;
-        this.y += this.dy;
-        SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
-      }
+      if (this.movement.active) this.traverseWorld();
       var collisions = this.getCollisions();
     };
 
@@ -695,6 +730,8 @@ var SG = (function(){
     panel.gameplay.selector.addEventListener('click',function() {
       hideAllPanels();
       if (game.mode !== 'gameplay') {
+        panel[game.mode].selector.classList.remove('control-selector-selected');
+        panel.gameplay.selector.classList.add('control-selector-selected');
         game.mode = 'gameplay';
         window.requestAnimationFrame(gameplay);
       }
@@ -704,11 +741,15 @@ var SG = (function(){
       if (panel[a].container.classList.contains('hide')) {
         hideAllPanels();
         panel[a].container.classList.remove('hide');
+        panel[a].selector.classList.add('control-selector-selected');
+        panel[game.mode].selector.classList.remove('control-selector-selected');
         game.mode = a;
         return true;
       }
       else {
         panel[a].container.classList.add('hide');
+        panel[a].selector.classList.remove('control-selector-selected');
+        panel.gameplay.selector.classList.add('control-selector-selected');
         game.mode = 'gameplay';
         window.requestAnimationFrame(gameplay);
         return false;
