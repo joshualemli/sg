@@ -129,11 +129,8 @@ var SG = (function(){
     });
   }
   function buildActions() {
-    var _items = entities[game.playerUID].items;
-    DOM.empty(panel.actions.container);
-    DOM.build('div',panel.actions.container,'Move',null,null);
-    DOM.build('div',panel.actions.container,'Plant',null,null);
-    DOM.build('div',panel.actions.container,'Harvest',null,null);
+    var player = entities[game.playerUID];
+    
   }
   function buildItems() {
     var _items = [];
@@ -647,12 +644,19 @@ var SG = (function(){
     panel.items.container = document.getElementById('items');
     hideAllPanels();
 
-    panel.mobiledevice.clock = document.getElementById('md_clock');
-    panel.mobiledevice.sleep = document.getElementById('md_sleep');
-    panel.mobiledevice.money = document.getElementById('md_money');
-    panel.mobiledevice.save = document.getElementById('md_saveGame');
-    panel.mobiledevice.load = document.getElementById('md_loadGame');
-    panel.mobiledevice.options = document.getElementById('md_options');
+    panel.mobiledevice.clock = document.getElementById('md-clock');
+    panel.mobiledevice.sleep = document.getElementById('md-sleep');
+    panel.mobiledevice.money = document.getElementById('md-money');
+    panel.mobiledevice.save = document.getElementById('md-saveGame');
+    panel.mobiledevice.load = document.getElementById('md-loadGame');
+    panel.mobiledevice.options = document.getElementById('md-options');
+    
+    panel.actions.move = document.getElementById('action-move');
+    panel.actions.inspect = document.getElementById('action-inspect');
+    panel.actions.plant = document.getElementById('action-plant');
+    panel.actions.harvest = document.getElementById('action-harvest');
+    panel.actions.build = document.getElementById('action-build');
+    panel.actions.repel = document.getElementById('action-repel');
 
     info = document.getElementById('info');
     debug = document.getElementById('debug');
@@ -671,40 +675,26 @@ var SG = (function(){
         hideAllPanels();
         panel[a].container.classList.remove('hide');
         game.mode = a;
-        loopByMode();
       }
-      else panel[a].container.classList.add('hide');
+      else {
+        panel[a].container.classList.add('hide');
+        game.mode = 'gameplay';
+      }
+      loopByMode();
     }
     panel.belt.selector.addEventListener('click',function(){basicPanelHandler('belt');});
-    panel.backpack.selector.addEventListener('click',function(){
-      hideAllPanels();
-      panel.backpack.container.classList.remove('hide');
-      game.mode = 'backpack';
-      loopByMode();
-    });
-    panel.mobiledevice.selector.addEventListener('click',function(){
-      hideAllPanels();
-      panel.mobiledevice.container.classList.remove('hide');
-      game.mode = 'mobiledevice';
-      loopByMode();
-    });
-    panel.store.selector.addEventListener('click',function(){
-      hideAllPanels();
-      panel.store.container.classList.remove('hide');
-      game.mode = 'store';
-      loopByMode();
-    });
-    panel.actions.selector.addEventListener('click',function(){
+    panel.backpack.selector.addEventListener('click',function(){basicPanelHandler('backpack');});
+    panel.mobiledevice.selector.addEventListener('click',function(){basicPanelHandler('mobiledevice');});
+    panel.store.selector.addEventListener('click',function(){basicPanelHandler('store');});
+    panel.actions.selector.addEventListener('click',function() {
       if (panel.actions.container.classList.contains('hide')) {
-        hideAllPanels();
         buildActions();
         panel.actions.container.classList.remove('hide');
       }
       else panel.actions.container.classList.add('hide');
     });
-    panel.items.selector.addEventListener('click',function(){
+    panel.items.selector.addEventListener('click',function() {
       if (panel.items.container.classList.contains('hide')) {
-        hideAllPanels();
         buildItems();
         panel.items.container.classList.remove('hide');
       }
