@@ -99,7 +99,9 @@ var SG = (function(){
     right: function() {game.viewX += 10/game.viewM;},
     magIncrease: function() {game.viewM = (game.viewM*1.01).toFixed(4);},
     magDecrease: function() {game.viewM = (game.viewM*0.99).toFixed(4);},
-    move: function(p) {},
+    move: function(p) {
+      entities[game.playerUID].queue.push({x:p.x,y:p.y,action:'move'});
+    },
     plant: function(p) {
       var player = entities[game.playerUID];
       player.seeds.forEach(function(seed){
@@ -120,6 +122,11 @@ var SG = (function(){
     ['belt','backpack','mobiledevice','store','actions','items'].forEach(function(item) {
       if (!panel[item].container.classList.contains('hide')) panel[item].container.classList.add('hide');
     });
+  }
+  function changeActionMode(a) {
+    panel.actions[game.actionMode].classList.remove('action-selected');
+    panel.actions[a].classList.add('action-selected');
+    game.actionMode = a;
   }
   function buildActions() {
     var player = entities[game.playerUID];
@@ -492,10 +499,12 @@ var SG = (function(){
           this.seeds.slice(_index,1);
         }
         buildItems();
-        this.dx = 0;
-        this.dy = 0;
         return true;
       }
+      else return false;
+    };
+    Player.prototype.move = function(task) {
+      if (!this.setDestination(task.x,task.y)) return true;
       else return false;
     };
     Player.prototype.traverseWorld = function() {
@@ -712,9 +721,7 @@ var SG = (function(){
     (function(actionModes){
       actionModes.forEach(function(a) { // for each mode
         panel.actions[a].addEventListener('click',function(e) { // create event listener
-          panel.actions[game.actionMode].classList.remove('action-selected');
-          panel.actions[a].classList.add('action-selected');
-          game.actionMode = a;
+          changeActionMode(a);
         });
       });
     })(['move','inspect','plant','harvest','build','repel']);

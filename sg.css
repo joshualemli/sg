@@ -29,13 +29,13 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
     background:#00D;
   }
   #selectBelt {
-    background:#888;
+    background:url('images/controls/belt_1.png') no-repeat center/40px;
   }
   #selectBackpack {
-    background:#A00;
+    background:url('images/controls/backpack_1.png') no-repeat center/46px;
   }
   #selectMobiledevice {
-    background:#0B0;
+    background:url('images/controls/mobiledevice_1.png') no-repeat center/46px;
   }
   #selectStore {
     background:#F90;
