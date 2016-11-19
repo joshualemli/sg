@@ -22,11 +22,8 @@ var SG = (function(){
     actions:{},
     items:{},
   };
-  //  LOOP FUNCTIONS
+  //  LOOP FUNCTION
   var gameplay;
-  var beltMode;
-  var backpackMode;
-  var mobiledeviceMode;
   //  SUB-MODULES
   var game; // game parameters
   var commands; // use input actionables
@@ -95,16 +92,6 @@ var SG = (function(){
     }
   };
 
-  function loopByMode() {
-    switch(game.mode) {
-      case 'gameplay': window.requestAnimationFrame(gameplay); break;
-      case 'belt': window.requestAnimationFrame(beltMode); break;
-      case 'backpack': window.requestAnimationFrame(backpackMode); break;
-      case 'mobiledevice': window.requestAnimationFrame(mobiledeviceMode); break;
-      default: return false;
-    } return true;
-  }
-  
   commands = {
     up: function() {game.viewY += 10/game.viewM;},
     down: function() {game.viewY -= 10/game.viewM;},
@@ -149,14 +136,6 @@ var SG = (function(){
     }
   }
 
-  beltMode = function() {
-  };
-  backpackMode = function() {
-  };
-  mobiledeviceMode = function() {
-    var player = entities[game.playerUID];
-    panel.mobiledevice.clock.innerHTML = game.years()+'y '+game.days()+'d '+game.hoursMinutes();
-  };
   gameplay = function(_t) {
     //  Time
     var loopStartTime = performance.now();
@@ -244,7 +223,7 @@ var SG = (function(){
         '</div>';
       debug.innerHTML = debugMsg;
     }
-    loopByMode();
+    if (game.mode === 'gameplay') window.requestAnimationFrame(gameplay);
   };
 
   //  ***  MODULES  ***  //
@@ -433,7 +412,15 @@ var SG = (function(){
         repel:[]
       };
       this.seeds = [];
-      this.equipment = [];
+      this.constructables = [];
+      this.equipment = {
+        inspect:[],
+        plant:[],
+        harvest:[],
+        build:[],
+        repel:[],
+        wearable:[]
+      };
       this.queue = [];
     };
     Extend.call(Player,_BasicEntity);
@@ -668,13 +655,25 @@ var SG = (function(){
     panel.mobiledevice.save = document.getElementById('md-saveGame');
     panel.mobiledevice.load = document.getElementById('md-loadGame');
     panel.mobiledevice.options = document.getElementById('md-options');
-    
+
+    panel.store.playersMoney = document.getElementById('store-playersMoney');
+    panel.store.categorySelect = document.getElementById('store-categorySelect');
+    panel.store.inventory = document.getElementById('store-inventory');
+
     panel.actions.move = document.getElementById('action-move');
     panel.actions.inspect = document.getElementById('action-inspect');
     panel.actions.plant = document.getElementById('action-plant');
     panel.actions.harvest = document.getElementById('action-harvest');
     panel.actions.build = document.getElementById('action-build');
     panel.actions.repel = document.getElementById('action-repel');
+    (function(actionModes){
+      actionModes.forEach(function(a) { // for each mode
+        panel.actions[a].addEventListener('click',function(e) { // create event listener
+          panel.actions[game.actionMode].classList.remove('action-selected');
+          panel.actions[a].classList.add('action-selected');
+        });
+      });
+    })(['move','inspect','plant','harvest','build','repel']);
 
     info = document.getElementById('info');
     debug = document.getElementById('debug');
@@ -683,11 +682,14 @@ var SG = (function(){
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
 
-    panel.gameplay.selector.addEventListener('click',function(){
-      game.mode = 'gameplay';
+    panel.gameplay.selector.addEventListener('click',function() {
       hideAllPanels();
-      loopByMode();
+      if (game.mode !== 'gameplay') {
+        game.mode = 'gameplay';
+        window.requestAnimationFrame(gameplay);
+      }
     });
+
     function basicPanelHandler(a) {
       if (panel[a].container.classList.contains('hide')) {
         hideAllPanels();
@@ -697,13 +699,22 @@ var SG = (function(){
       else {
         panel[a].container.classList.add('hide');
         game.mode = 'gameplay';
+        window.requestAnimationFrame(gameplay);
       }
-      loopByMode();
     }
-    panel.belt.selector.addEventListener('click',function(){basicPanelHandler('belt');});
-    panel.backpack.selector.addEventListener('click',function(){basicPanelHandler('backpack');});
-    panel.mobiledevice.selector.addEventListener('click',function(){basicPanelHandler('mobiledevice');});
-    panel.store.selector.addEventListener('click',function(){basicPanelHandler('store');});
+    panel.belt.selector.addEventListener('click',function(){
+      basicPanelHandler('belt');
+    });
+    panel.backpack.selector.addEventListener('click',function(){
+      basicPanelHandler('backpack');
+    });
+    panel.mobiledevice.selector.addEventListener('click',function(){
+      basicPanelHandler('mobiledevice');
+    });
+    panel.store.selector.addEventListener('click',function(){
+      basicPanelHandler('store');
+      panel.store.playersMoney.innerHTML = '$'+entities[game.playerUID].money;
+    });
     panel.actions.selector.addEventListener('click',function() {
       if (panel.actions.container.classList.contains('hide')) {
         buildActions();
@@ -725,8 +736,8 @@ var SG = (function(){
     var _player = Create.player(0,0);
     _player.seeds.push(Create.seed({growth:'Parsley',quantity:25}));
     _player.seeds.push(Create.seed({growth:'Dandelion',quantity:25}));
-    for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
-    for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
+    //for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
+    //for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
 
       //DEBUG
 
