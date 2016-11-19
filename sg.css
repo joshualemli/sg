@@ -26,7 +26,8 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
     opacity:1;
   }
   #selectGameplay {
-    background:#00D;
+    width:60px;
+    background:url('images/controls/sg_60x39.png') no-repeat center;
   }
   #selectBelt {
     background:url('images/controls/belt_1.png') no-repeat center/40px;
