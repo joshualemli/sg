@@ -65,7 +65,9 @@ var SG = (function(){
     viewM:1, // scalar (magnification)
     _playerUID: null, // player entity uid
     mode: 'gameplay', // controls loop function via `loopByMode` function
-    actionMode: 'plant', // controls click action (move,deter,plant,inspect,build,harvest);
+    actionMode: 'plant', // controls click action (move,repel,plant,inspect,build,harvest);
+    seedSelection: 'Parsley',
+    buildSelection: '',
     paused: false,
     iteration: 0, // persistent loop counter
     date: 0, // "minutes" (game time), 1min/17ms
@@ -111,7 +113,13 @@ var SG = (function(){
     magIncrease: function() {game.viewM = (game.viewM*1.01).toFixed(4);},
     magDecrease: function() {game.viewM = (game.viewM*0.99).toFixed(4);},
     plant: function(p) {
-      entities[game.playerUID].queue.push({x:p.x,y:p.y,type:'plant',item:'Parsley'});
+      var player = entities[game.playerUID];
+      player.seeds.forEach(function(seed){
+        if (seed.groth === p.growth && seed.quantity > 0) {
+          player.queue.push({x:p.x,y:p.y,action:'plant',growth:'Parsley'});
+          return;
+        }
+      });
     }
   };
 
@@ -121,13 +129,20 @@ var SG = (function(){
     });
   }
   function buildActions() {
+    var _items = entities[game.playerUID].items;
+    DOM.empty(panel.actions.container);
+    DOM.build('div',panel.actions.container,'Move',null,null);
+    DOM.build('div',panel.actions.container,'Plant',null,null);
+    DOM.build('div',panel.actions.container,'Harvest',null,null);
   }
   function buildItems() {
-//     DOM.empty(items);
-//     var _items = entities[game.playerUID].items;
-//     _items.forEach(function(item) {
-//       DOM.build('div',items,item.name,null,null);
-//     });
+    var _items = [];
+    if (game.actionMode==='plant') _items = entities[game.playerUID].seeds;
+    DOM.empty(panel.items.container);
+    _items.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
+    _items.forEach(function(item){
+      DOM.build('div',panel.items.container,item.growth+' - '+item.quantity,null,null);
+    });
   }
 
   beltMode = function() {
@@ -400,17 +415,37 @@ var SG = (function(){
       this.level = 1;
       this.radius = 10;
       this.money = 0;
-      this.items = [{}];
+      this.belt = {
+        slotCount:3,
+        inspect:[],
+        plant:[],
+        harvest:[],
+        build:[],
+        repel:[]
+      };
+      this.seeds = [];
+      this.equipment = [];
       this.queue = [];
     };
     Extend.call(Player,_BasicEntity);
     Player.prototype.getCollisions = getCollisions;
-    Player.prototype.plant = function(name,x,y) {
-      var pdx = x-this.x;
-      var pdy = y-this.y;
+    Player.prototype.plant = function(task) {
+      var pdx = task.x-this.x;
+      var pdy = task.y-this.y;
       var dD = Math.sqrt(pdx*pdx+pdy*pdy);
       if (dD <= this.radius) {
-        Create.growth(name,x,y);
+        Create.growth(task.growth,task.x,task.y);
+        if (this.seeds.length) for (var i = this.seeds.length; i--;) if (this.seeds[i].growth === task.growth) {
+          this.seeds[i].quantity -= 1;
+          if (this.seeds[i].quantity === 0) {
+            for (var j = this.queue.length; j--;) {
+              if (this.queue[j].growth === this.seeds[i].growth) this.queue.splice(j,1);
+            }
+            delete this.seeds[i];
+          }
+          buildItems();
+          break;
+        }
         this.dx = 0;
         this.dy = 0;
         return true;
@@ -425,7 +460,7 @@ var SG = (function(){
     Player.prototype.step = function() {
       if (this.queue.length) {
         var task = this.queue[0];
-        if (this[task.type](task.item,task.x,task.y)) this.queue.shift();
+        if (this[task.action](task)) this.queue.shift();
       }
       if (this.dx || this.dy) {
         var xi = this.x;
@@ -500,11 +535,21 @@ var SG = (function(){
     
     Growth.Parsley = function() {
       Growth._Growth.call(this);
-      this.maxRadius = 4;
-      this.value = 1;
+      this.maxRadius = 3;
+      this.value = 0.5;
+      this.cost = 0.03;
     };
     Extend.call(Growth.Parsley,Growth._Growth);
     Name.call(Growth.Parsley,'Parsley','Petroselinum crispum');
+
+    Growth.Dandelion = function() {
+      Growth._Growth.call(this);
+      this.maxRadius = 3;
+      this.value = 0.35;
+      this.cost = 0.02;
+    };
+    Extend.call(Growth.Dandelion,Growth._Growth);
+    Name.call(Growth.Dandelion,'Dandelion','Taraxacum officinale');
 
     //  ***  "INSTANCES"  ***  //
 
@@ -522,18 +567,17 @@ var SG = (function(){
 
     var Equipment = {};
 
-    Equipment.Seed = function() {
-      this.growthName = '';
-      this.name = 'seed';
-      this.quantity = 0;
-      this.cost = 0;
-    }
-
     Equipment._Item = function() {
       this.name = '';
       this.cost = 0;
       this.slot = ''; // corresponds to beltslot (`game.actionMode` domain)
     };
+
+    var Seed = function(growthName) {
+      this.growth = growthName;
+      this.name = 'seed';
+      this.quantity = 0;
+    }
 
     function transmogrifyUID(n,exp) {
       if (!exp) exp = 0;
@@ -555,13 +599,14 @@ var SG = (function(){
         case 'Creature': _entity = new Creature[type](); break;
         case 'Growth': _entity = new Growth[type](); break;
         case 'Equipment': _entity = new Equipment[type](); break;
+        case 'Seed': _entity = new Seed(); break;
         default: return null;
       }
       for (var key in params) _entity[key] = params[key];
       if (category === 'Equipment') {
-        if (type === 'Seed') {
-          _entity.plantInfo = Instances.growth[_entity.growthName];
-        }
+      }
+      else if (category === 'Seed') {
+        _entity.plantInfo = Instances.growth[_entity.growth];
       }
       else {
         _entity.uid = transmogrifyUID(_UID);
@@ -578,6 +623,7 @@ var SG = (function(){
       creature:function(a,x,y){return make('Creature',a,{x:x,y:y});},
       growth:function(a,x,y){return make('Growth',a,{x:x,y:y});},
       equipment:function(a,p){return make('Equipment',a,p);},
+      seed:function(p){return make('Seed',null,p);},
       clone:function(cat,type){return Instances[cat][type]();}
     };
 
@@ -620,12 +666,16 @@ var SG = (function(){
       hideAllPanels();
       loopByMode();
     });
-    panel.belt.selector.addEventListener('click',function(){
-      hideAllPanels();
-      panel.belt.container.classList.remove('hide');
-      game.mode = 'belt';
-      loopByMode();
-    });
+    function basicPanelHandler(a) {
+      if (panel[a].container.classList.contains('hide')) {
+        hideAllPanels();
+        panel[a].container.classList.remove('hide');
+        game.mode = a;
+        loopByMode();
+      }
+      else panel[a].container.classList.add('hide');
+    }
+    panel.belt.selector.addEventListener('click',function(){basicPanelHandler('belt');});
     panel.backpack.selector.addEventListener('click',function(){
       hideAllPanels();
       panel.backpack.container.classList.remove('hide');
@@ -645,20 +695,27 @@ var SG = (function(){
       loopByMode();
     });
     panel.actions.selector.addEventListener('click',function(){
-      hideAllPanels();
-      buildActions();
-      panel.actions.container.classList.remove('hide');
+      if (panel.actions.container.classList.contains('hide')) {
+        hideAllPanels();
+        buildActions();
+        panel.actions.container.classList.remove('hide');
+      }
+      else panel.actions.container.classList.add('hide');
     });
     panel.items.selector.addEventListener('click',function(){
-      hideAllPanels();
-      buildItems();
-      panel.items.container.classList.remove('hide');
+      if (panel.items.container.classList.contains('hide')) {
+        hideAllPanels();
+        buildItems();
+        panel.items.container.classList.remove('hide');
+      }
+      else panel.items.container.classList.add('hide');
     });
     
     Input.init();
 
     //  Make fake world for now...
-    Create.player(0,0);
+    var _player = Create.player(0,0);
+    _player.seeds.push(Create.seed({growth:'Parsley',quantity:25}));
     for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
     for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
 
