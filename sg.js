@@ -28,6 +28,7 @@ var SG = (function(){
   var game; // game parameters
   var commands; // use input actionables
   var entities; // all dynamic objects in the world
+  var drawBins; // objects to be drawn (for draw order)
   var Create; // object creation module
   var SpatialHash; // spatial culling module
   var Input; // handle user keyboard & mouse input
@@ -55,6 +56,12 @@ var SG = (function(){
   //  ***  GAME MECHANICS  ***  //
 
   entities = {};
+  drawBins = {
+    base: [],
+    ground: [],
+    middle:[],
+    sky:[]
+  };
 
   game = {
     viewX:0, // center-point
@@ -452,8 +459,8 @@ var SG = (function(){
     _BasicEntity.prototype.step = function() {};
     _BasicEntity.prototype.isInView = function() {
       if ( this.x+this.radius > game.viewXMin && this.x-this.radius < game.viewXMax &&
-           this.y+this.radius > game.viewYMin && this.y-this.radius < game.viewYMax) {
-      }
+           this.y+this.radius > game.viewYMin && this.y-this.radius < game.viewYMax) return true;
+      return false;
     };
 
     //  ***  PLAYER  ***  //
@@ -617,6 +624,7 @@ var SG = (function(){
       if (this.movement.active) this.traverseWorld();
       var collisions = this.getCollisions();
     };
+    Player.prototype.addToDrawBin = function() {};
 
     //  ***  CREATURES  ***  //
 
@@ -655,6 +663,8 @@ var SG = (function(){
         SpatialHash.remove(this.x,this.y,this.uid);
         delete entities[this.uid];
       }
+    };
+    Creature.prototype.addToDrawBin = function() {
     };
 
     //  Dogs
