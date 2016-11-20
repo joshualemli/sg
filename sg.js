@@ -112,9 +112,18 @@ var SG = (function(){
       });
       return false;
     },
-    harvest: function(p) {},
+    harvest: function(p) {
+    },
     deter: function(p) {},
-    inspect: function(p) {},
+    inspect: function(p) {
+      var uidsBatch = SpatialHash.retrieve(p.x,p.y);
+      uidsBatch.forEach(function(uid){
+        var _entity = entities[uid];
+        if (Math.sqrt((p.x-_entity.x)*(p.x-_entity.x)+(p.y-_entity.y)*(p.y-_entity.y)) <= _entity.radius) {
+          entities[game.playerUID].queue.push({x:p.x,y:p.y,action:'inspect',uid:_entity.uid});
+        }
+      });
+    },
     build: function(p) {}
   };
 
@@ -178,7 +187,7 @@ var SG = (function(){
       var target = entities[uid];
       if (1){ //is in view?
         if (target.image) {
-          var _offset = target.radius/2;
+          var _offset = target.radius;
           var _dim = target.radius*2;
           context.drawImage(target.image,target.x-_offset,target.y-_offset,_dim,_dim);
         }
@@ -453,9 +462,9 @@ var SG = (function(){
       this.seeds = [];
       this.constructables = [];
       this.equipment = {
-        inspect:[],
-        plant:[],
-        harvest:[],
+        inspect:['BotanistsFriend'],
+        plant:['Trowel'],
+        harvest:['WickerBasket'],
         build:[],
         repel:[],
         wearable:[]
@@ -497,6 +506,33 @@ var SG = (function(){
         return false;
       }
     };
+    Player.prototype.setTargetUID = function(uid) {
+      if (this.movement.targetUID === uid) {
+        if (this.movement._recalcTrajectoryCounter > 0) {
+          this.movement._recalcTrajectoryCounter -= 1;
+          return true;
+        }
+      }
+      else this.movement.targetUID = uid;
+      var target = entities[uid];
+      var pdx = target.x-this.x;
+      var pdy = target.y-this.y;
+      var dD = Math.sqrt(pdx*pdx+pdy*pdy);
+      if (dD > this.radius+target.radius) {
+        this.movement.active = true;
+        var scalar = dD*dD/(this.movement.speed*this.movement.speed);
+        this.movement.dx = Math.sqrt(pdx*pdx/scalar)*Math.sign(pdx);
+        this.movement.dy = Math.sqrt(pdy*pdy/scalar)*Math.sign(pdy);
+        if (dD > this.movement.speed*6+this.radius+target.radius) {
+          this.movement._recalcTrajectoryCounter = 3;
+        }
+        return true;
+      }
+      else {
+        this.movement.active = false;
+        return false;
+      }
+    };
     Player.prototype.plant = function(task) {
       if (!this.setDestination(task.x,task.y)) {
         Create.growth(task.growth,task.x,task.y);
@@ -520,6 +556,13 @@ var SG = (function(){
       if (!this.setDestination(task.x,task.y)) return true;
       else return false;
     };
+    Player.prototype.inspect = function(task) {
+      if (!this.setTargetUID(task.uid)) {
+        console.log(entities[task.uid]);
+        return true;
+      }
+      else return false;
+    }
     Player.prototype.traverseWorld = function() {
       var xi = this.x;
       var yi = this.y;
@@ -551,10 +594,19 @@ var SG = (function(){
     Creature._Creature.prototype.getCollisions = getCollisions;
     Creature._Creature.prototype.step = function() {
       //this.radius -= 1/this.endurance;
+      if (rI(1,40)===10) {
+        if (rI(0,3)===3) {
+          this.dx=0; this.dy=0;
+        }
+        else {
+          this.dx = rI(0,5)/10 * rI(-1,1);
+          this.dy = rI(0,5)/10 * rI(-1,1);
+        }
+      }
       var xi = this.x;
       var yi = this.y;
-      this.x += rI(-5,5)/10;
-      this.y += rI(-5,5)/10;
+      this.x += this.dx;
+      this.y += this.dy;
       SpatialHash.transfer(xi,yi,this.x,this.y,this.uid);
       var collisions = this.getCollisions();
       if (collisions.length) this.color = '#F00';
@@ -574,6 +626,7 @@ var SG = (function(){
     };
     Extend.call(Creature.Dog,Creature._Creature);
     Name.call(Creature.Dog,'Dog','Canus lupus familiaris');
+    EntityImage.call(Creature.Dog,'creatures','doghead.png');
 
     //  Labrador, Mutt, etc...    
     //  Horses
@@ -589,8 +642,6 @@ var SG = (function(){
     var Growth = {};
     Growth._Growth = function() {
       _BasicEntity.call(this);
-      this.maxRadius = 1;
-      this.growthRate = 1e-4;
     };
     Extend.call(Growth._Growth,_BasicEntity);
     Growth._Growth.prototype.step = function() {
@@ -604,19 +655,24 @@ var SG = (function(){
     Name.call(Growth.Parsley,'Parsley','Petroselinum crispum');
     AddPrototypes.call(Growth.Parsley,{
       maxRadius: 3,
-      value: 0.5,
-      cost: 0.03
+      value: 0.06,
+      cost: 0.03,
+      growthRate: 1e-4
     });
+    EntityImage.call(Growth.Parsley,'growths','parsley_1.png');
 
 
     Growth.Dandelion = function() {
       Growth._Growth.call(this);
-      this.maxRadius = 3;
-      this.value = 0.35;
-      this.cost = 0.02;
     };
     Extend.call(Growth.Dandelion,Growth._Growth);
     Name.call(Growth.Dandelion,'Dandelion','Taraxacum officinale');
+    AddPrototypes.call(Growth.Dandelion,{
+      maxRadius: 3,
+      value: 0.04,
+      cost: 0.01,
+      growthRate: 2e-4
+    });
     EntityImage.call(Growth.Dandelion,'growths','dandelion_1.png');
 
     //  ***  "INSTANCES"  ***  //
@@ -821,8 +877,9 @@ var SG = (function(){
     var _player = Create.player(0,0);
     _player.seeds.push(Create.seed({growth:'Parsley',quantity:25}));
     _player.seeds.push(Create.seed({growth:'Dandelion',quantity:25}));
-    //for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
-    //for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
+    for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
+    for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
+    for (_i_1 = 200; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
 
       //DEBUG
 
