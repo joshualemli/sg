@@ -166,21 +166,29 @@ var SG = (function(){
     if (click) commands[game.actionMode](click);
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
-    //  Graphics
+    //  Setup canvas for new frame
     context.setTransform(1,0,0,1,0,0);
     context.fillStyle = 'rgb(50,35,35)';
     context.fillRect(0,0,context.canvas.width,context.canvas.height);
     context.setTransform( game.viewM,0,0,-game.viewM,
                           context.canvas.width/2 - game.viewX*game.viewM,
                           context.canvas.height/2 + game.viewY*game.viewM );
+    //  Draw `entities`
     for (uid in entities) {
       var target = entities[uid];
       if (1){ //is in view?
-        if (target.color) context.fillStyle = target.color;
-        else context.fillStyle = 'rgb(0,255,0)';
-        context.beginPath();
-        context.arc(target.x,target.y,target.radius,0,2*Math.PI);
-        context.fill();
+        if (target.image) {
+          var _offset = target.radius/2;
+          var _dim = target.radius*2;
+          context.drawImage(target.image,target.x-_offset,target.y-_offset,_dim,_dim);
+        }
+        else {
+          if (target.color) context.fillStyle = target.color;
+          else context.fillStyle = 'rgb(0,255,0)';
+          context.beginPath();
+          context.arc(target.x,target.y,target.radius,0,2*Math.PI);
+          context.fill();
+        }
       }
     }
     //  Draw player queue
@@ -386,6 +394,11 @@ var SG = (function(){
       for (var pName in props) {
         this.prototype[pName] = props[pName];
       }
+    }
+    function EntityImage(dir,src) {
+      var _img = new Image();
+      _img.src = 'images/'+dir+'/'+src;
+      this.prototype.image = _img;
     }
 
     //  ***  "Uncoupled" prototypes  ***  //
@@ -604,6 +617,7 @@ var SG = (function(){
     };
     Extend.call(Growth.Dandelion,Growth._Growth);
     Name.call(Growth.Dandelion,'Dandelion','Taraxacum officinale');
+    EntityImage.call(Growth.Dandelion,'growths','dandelion_1.png');
 
     //  ***  "INSTANCES"  ***  //
 
