@@ -113,6 +113,13 @@ var SG = (function(){
       return false;
     },
     harvest: function(p) {
+      var uidsBatch = SpatialHash.retrieve(p.x,p.y);
+      uidsBatch.forEach(function(uid){
+        var _entity = entities[uid];
+        if (Math.sqrt((p.x-_entity.x)*(p.x-_entity.x)+(p.y-_entity.y)*(p.y-_entity.y)) <= _entity.radius) {
+          entities[game.playerUID].queue.push({x:p.x,y:p.y,action:'harvest',uid:_entity.uid});
+        }
+      });
     },
     deter: function(p) {},
     inspect: function(p) {
@@ -192,11 +199,11 @@ var SG = (function(){
           context.drawImage(target.image,target.x-_offset,target.y-_offset,_dim,_dim);
         }
         else {
-          if (target.color) context.fillStyle = target.color;
-          else context.fillStyle = 'rgb(0,255,0)';
+          if (target.color) context.strokeStyle = target.color;
+          else context.strokeStyle = 'rgb(0,255,0)';
           context.beginPath();
           context.arc(target.x,target.y,target.radius,0,2*Math.PI);
-          context.fill();
+          context.stroke();
         }
       }
     }
@@ -449,7 +456,7 @@ var SG = (function(){
         targetUID: 'str'
       };
       this.level = 1;
-      this.radius = 10;
+      this.radius = 7;
       this.money = 0;
       this.belt = {
         slotCount:3,
@@ -561,8 +568,25 @@ var SG = (function(){
         console.log(entities[task.uid]);
         return true;
       }
-      else return false;
+      else {
+        task.x = entities[task.uid].x;
+        task.y = entities[task.uid].y;
+        return false;
+      }
     }
+    Player.prototype.harvest = function(task) {
+      if (!this.setTargetUID(task.uid)) {
+        var target = entities[task.uid];
+        entities[game.playerUID].money += target.value*target.radius/target.maxRadius;
+        SpatialHash.remove(target.x,target.y,target.uid);
+        delete entities[task.uid];
+        console.log(entities[game.playerUID].money);
+        return true;
+      }
+      else {
+        return false;
+      }
+    };
     Player.prototype.traverseWorld = function() {
       var xi = this.x;
       var yi = this.y;
@@ -596,7 +620,8 @@ var SG = (function(){
       //this.radius -= 1/this.endurance;
       if (rI(1,40)===10) {
         if (rI(0,3)===3) {
-          this.dx=0; this.dy=0;
+          this.dx = 0;
+          this.dy = 0;
         }
         else {
           this.dx = rI(0,5)/10 * rI(-1,1);
@@ -626,7 +651,7 @@ var SG = (function(){
     };
     Extend.call(Creature.Dog,Creature._Creature);
     Name.call(Creature.Dog,'Dog','Canus lupus familiaris');
-    EntityImage.call(Creature.Dog,'creatures','doghead.png');
+    EntityImage.call(Creature.Dog,'creatures','dog_1.png');
 
     //  Labrador, Mutt, etc...    
     //  Horses
@@ -843,7 +868,7 @@ var SG = (function(){
     });
     panel.store.selector.addEventListener('click',function(){
       if (basicPanelHandler('store')) {
-        panel.store.playersMoney.innerHTML = '$'+entities[game.playerUID].money;
+        panel.store.playersMoney.innerHTML = '$'+(Math.floor(entities[game.playerUID].money*100)/100).toFixed(2);
         DOM.empty(panel.store.inventory);
         var seeds = ['Dandelion','Parsley'];
         seeds.forEach(function(seed){
