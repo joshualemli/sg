@@ -87,9 +87,10 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
 }
 #actions {
   z-index:50;
-  position:absolute; top:50px; left:200px;
+  position:absolute; top:50px; left:235px;
   width:100px;
   background:rgba(100,100,100,0.5);
+  text-align:center;
 }
 .action-mode {
   cursor:pointer;
@@ -97,6 +98,12 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
 .action-mode:hover {
   color:#00D;
 }
+#action-move: {}
+#action-inspect {}
+#action-plant {}
+#action-harvest {}
+#action-build {}
+#action-repel {}
 .action-selected {
   color:#F90;
 }

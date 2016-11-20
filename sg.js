@@ -59,6 +59,10 @@ var SG = (function(){
   game = {
     viewX:0, // center-point
     viewY:0, // center-point
+    viewXMax: 0, // save comp time
+    viewYMax: 0, //      "
+    viewXMin: 0, //      "
+    viewYMin: 0, //      "
     viewM:1, // scalar (magnification)
     _playerUID: null, // player entity uid
     mode: 'gameplay', // controls loop function via `loopByMode` function
@@ -142,6 +146,8 @@ var SG = (function(){
   function changeActionMode(a) {
     panel.actions[game.actionMode].classList.remove('action-selected');
     panel.actions[a].classList.add('action-selected');
+    if (a==='move') panel.actions.selector.style.background = 'url("images/wearable/sneakers_1.png") no-repeat center/26px';
+    else panel.actions.selector.style.background = null;
     game.actionMode = a;
   }
   function buildActions() {
@@ -183,6 +189,10 @@ var SG = (function(){
     //  Gameplay
     for (var uid in entities) entities[uid].step(dt);
     //  Setup canvas for new frame
+    game.viewXMax = game.viewX + context.canvas.width/2/game.viewM;
+    game.viewYMax = game.viewY + context.canvas.height/2/game.viewM;
+    game.viewXMin = game.viewX - context.canvas.width/2/game.viewM;
+    game.viewYMin = game.viewY - context.canvas.height/2/game.viewM;
     context.setTransform(1,0,0,1,0,0);
     context.fillStyle = 'rgb(50,35,35)';
     context.fillRect(0,0,context.canvas.width,context.canvas.height);
@@ -440,6 +450,11 @@ var SG = (function(){
       this.y = 0;
     };
     _BasicEntity.prototype.step = function() {};
+    _BasicEntity.prototype.isInView = function() {
+      if ( this.x+this.radius > game.viewXMin && this.x-this.radius < game.viewXMax &&
+           this.y+this.radius > game.viewYMin && this.y-this.radius < game.viewYMax) {
+      }
+    };
 
     //  ***  PLAYER  ***  //
 
@@ -673,6 +688,19 @@ var SG = (function(){
       if (this.radius < this.maxRadius) this.radius += this.growthRate;
     };
     
+    Growth.Dandelion = function() {
+      Growth._Growth.call(this);
+    };
+    Extend.call(Growth.Dandelion,Growth._Growth);
+    Name.call(Growth.Dandelion,'Dandelion','Taraxacum officinale');
+    AddPrototypes.call(Growth.Dandelion,{
+      maxRadius: 3,
+      value: 0.03,
+      cost: 0.01,
+      growthRate: 2e-4
+    });
+    EntityImage.call(Growth.Dandelion,'growths','dandelion_1.png');
+    
     Growth.Parsley = function() {
       Growth._Growth.call(this);
     };
@@ -686,19 +714,27 @@ var SG = (function(){
     });
     EntityImage.call(Growth.Parsley,'growths','parsley_1.png');
 
-
-    Growth.Dandelion = function() {
+    Growth.Rhubarb = function() {
       Growth._Growth.call(this);
-    };
-    Extend.call(Growth.Dandelion,Growth._Growth);
-    Name.call(Growth.Dandelion,'Dandelion','Taraxacum officinale');
-    AddPrototypes.call(Growth.Dandelion,{
-      maxRadius: 3,
-      value: 0.04,
-      cost: 0.01,
-      growthRate: 2e-4
+    }
+    Extend.call(Growth.Rhubarb,Growth._Growth);
+    Name.call(Growth.Rhubarb,'Rhubarb','Rheum rhabarbarum');
+    AddPrototypes.call(Growth.Rhubarb,{
+      maxRadius: 4.2,
+      value: 0.25,
+      cost: 0.1,
+      growthRate: 7e-5
     });
-    EntityImage.call(Growth.Dandelion,'growths','dandelion_1.png');
+    
+    Growth.GreenBeans = function() {
+    }
+    Name.call(Growth.GreenBean,'Green Beans','Phaseolus vulgaris');
+    AddPrototypes.call(Growth.Rhubarb,{
+      maxRadius: 6.5,
+      value: 0.45,
+      cost: 0.15,
+      growthRate: 8e-5
+    });
 
     //  ***  "INSTANCES"  ***  //
 
