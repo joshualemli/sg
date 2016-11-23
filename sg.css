@@ -114,12 +114,74 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
   background:rgba(255,255,255,0.5);
 }
 
+#store {}
+.store-seed {
+  width:220px; height:70px; float:left;
+  margin:8px; padding:8px;
+  background-color:rgba(100,140,100,0.2);
+  border:1px solid rgba(40,120,10,0.3);
+  color:#BBB;
+}
+.store-seed:hover {
+  background-color:rgba(60,60,60,0.6);
+  border-color:rgba(50,160,20,0.6);
+  color:#DFD;
+}
+.store-seed:hover .store-seed-image {
+  border-color:#AFA;
+}
+  .store-seed-image {
+    display:block; float:right;
+    padding:2px;
+    border:1px solid #777;
+    border-radius:3px;
+    box-shadow:1px 2px 4px 0 #000;
+    background-color:rgba(0,0,0,0.2);
+  }
+  .store-seed-text {
+    float:left;
+  }
+  .store-seed-purchase {
+    float:left;
+    width:140px;
+    padding:3px;
+    border:1px solid rgba(255,255,255,0.1);
+  }
+  .store-purchase-incrementer {
+    width:30px; float:left;
+  }
+  .store-purchase-quantityIncrease {
+    width:0; height:0;
+    display:block;
+    border-left:10px solid transparent;
+    border-right:10px solid transparent;
+    border-bottom:10px solid #f00;
+  }
+  .store-purchase-quantityDecrease {
+    width:0; height:0;
+    display:block;
+    border-left:10px solid transparent;
+    border-right:10px solid transparent;
+    border-top:10px solid #f00;
+  }
+  .store-purchase-button {
+    display:block; float:right;
+    margin:1px; padding:1px 2px;
+    background:rgba(0,0,0,0.4);
+    border:1px solid rgba(0,0,0,0.6);
+    color:#DDD;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .store-purchase-button:hover {
+    border-color:#FFF;
+  }
+
 #canvas {
   z-index:1;
   position:absolute; top:0; left:0;
   width:100%; height:100%;
 }
-
 
 .hide {
   display:none;

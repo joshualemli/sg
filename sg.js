@@ -1,5 +1,5 @@
 
-//    Sarah's Garden v4.0.0
+//    Sarah's Garden v4
 //    Joshua A. Lemli
 //    2016
 
@@ -22,9 +22,8 @@ var SG = (function(){
     actions:{},
     items:{},
   };
-  //  LOOP FUNCTION
-  var gameplay;
   //  SUB-MODULES
+  var gameplay; // primary gameplay loop function
   var game; // game parameters
   var commands; // use input actionables
   var entities; // all dynamic objects in the world
@@ -33,7 +32,6 @@ var SG = (function(){
   var SpatialHash; // spatial culling module
   var Input; // handle user keyboard & mouse input
   var DOM; // manipulate DOM
-
   //  CONSTANTS AND GAME OPTIONS
   var _UID = 0; // next UID to be created
   var OPTIONS = {
@@ -56,12 +54,7 @@ var SG = (function(){
   //  ***  GAME MECHANICS  ***  //
 
   entities = {};
-  drawBins = {
-    base: [],
-    ground: [],
-    middle:[],
-    sky:[]
-  };
+  drawBins = {};
 
   game = {
     viewX:0, // center-point
@@ -72,10 +65,10 @@ var SG = (function(){
     viewYMin: 0, //      "
     viewM:1, // scalar (magnification)
     _playerUID: null, // player entity uid
-    mode: 'gameplay', // controls loop function via `loopByMode` function
-    actionMode: 'plant', // controls click action (move,repel,plant,inspect,build,harvest);
-    seedSelection: 'Parsley',
-    buildSelection: '',
+    mode: 'foo', // controls loop function via `loopByMode` function
+    actionMode: 'foo', // controls click action (move,repel,plant,inspect,build,harvest);
+    seedSelection: 'foo',
+    buildSelection: 'foo',
     paused: false,
     iteration: 0, // persistent loop counter
     date: 0, // "minutes" (game time), 1min/17ms
@@ -151,7 +144,7 @@ var SG = (function(){
     });
   }
   function changeActionMode(a) {
-    panel.actions[game.actionMode].classList.remove('action-selected');
+    if (panel.actions[game.actionMode]) panel.actions[game.actionMode].classList.remove('action-selected');
     panel.actions[a].classList.add('action-selected');
     if (a==='move') panel.actions.selector.style.background = 'url("images/wearable/sneakers_1.png") no-repeat center/26px';
     else panel.actions.selector.style.background = null;
@@ -194,7 +187,14 @@ var SG = (function(){
     var click = Input.getClick(true);
     if (click) commands[game.actionMode](click);
     //  Gameplay
-    for (var uid in entities) entities[uid].step(dt);
+    drawBins.base = [];
+    drawBins.ground = [];
+    drawBins.middle = [];
+    drawBins.sky = [];
+    for (var uid in entities) {
+      entities[uid].step(dt);
+      if (entities[uid].isInView) entities[uid].addToDrawBin();
+    }
     //  Setup canvas for new frame
     game.viewXMax = game.viewX + context.canvas.width/2/game.viewM;
     game.viewYMax = game.viewY + context.canvas.height/2/game.viewM;
@@ -207,7 +207,11 @@ var SG = (function(){
                           context.canvas.width/2 - game.viewX*game.viewM,
                           context.canvas.height/2 + game.viewY*game.viewM );
     //  Draw `entities`
-    for (uid in entities) {
+    var _entities = drawBins.base;
+    drawBins.ground.forEach(function(uid){_entities.push(uid);});
+    drawBins.middle.forEach(function(uid){_entities.push(uid);});
+    drawBins.sky.forEach(function(uid){_entities.push(uid);});
+    _entities.forEach(function(uid) {
       var target = entities[uid];
       if (1){ //is in view?
         if (target.image) {
@@ -223,7 +227,7 @@ var SG = (function(){
           context.stroke();
         }
       }
-    }
+    });
     //  Draw player queue
     if (entities[game.playerUID].queue.length) {
       var _qLastX=0,_qLastY=0;
@@ -624,7 +628,7 @@ var SG = (function(){
       if (this.movement.active) this.traverseWorld();
       var collisions = this.getCollisions();
     };
-    Player.prototype.addToDrawBin = function() {};
+    Player.prototype.addToDrawBin = function() {drawBins.middle.push(this.uid);};
 
     //  ***  CREATURES  ***  //
 
@@ -664,8 +668,7 @@ var SG = (function(){
         delete entities[this.uid];
       }
     };
-    Creature.prototype.addToDrawBin = function() {
-    };
+    Creature._Creature.prototype.addToDrawBin = function() {drawBins.middle.push(this.uid);};
 
     //  Dogs
     
@@ -697,6 +700,7 @@ var SG = (function(){
     Growth._Growth.prototype.step = function() {
       if (this.radius < this.maxRadius) this.radius += this.growthRate;
     };
+    Growth._Growth.prototype.addToDrawBin = function() {drawBins.ground.push(this.uid);};
     
     Growth.Dandelion = function() {
       Growth._Growth.call(this);
@@ -737,9 +741,11 @@ var SG = (function(){
     });
     
     Growth.GreenBeans = function() {
-    }
-    Name.call(Growth.GreenBean,'Green Beans','Phaseolus vulgaris');
-    AddPrototypes.call(Growth.Rhubarb,{
+      Growth._Growth.call(this);
+    };
+    Extend.call(Growth.GreenBeans,Growth._Growth);
+    Name.call(Growth.GreenBeans,'Green Beans','Phaseolus vulgaris');
+    AddPrototypes.call(Growth.GreenBeans,{
       maxRadius: 6.5,
       value: 0.45,
       cost: 0.15,
@@ -772,7 +778,7 @@ var SG = (function(){
       this.growth = growthName;
       this.name = 'seed';
       this.quantity = 0;
-    }
+    };
 
     function transmogrifyUID(n,exp) {
       if (!exp) exp = 0;
@@ -866,7 +872,6 @@ var SG = (function(){
         });
       });
     })(['move','inspect','plant','harvest','build','repel']);
-    panel.actions[game.actionMode].classList.add('action-selected');
 
     info = document.getElementById('info');
     debug = document.getElementById('debug');
@@ -874,17 +879,8 @@ var SG = (function(){
     context = canvas.getContext('2d');
     resizeWindow();
     window.addEventListener('resize',resizeWindow);
-
-    panel.gameplay.selector.addEventListener('click',function() {
-      hideAllPanels();
-      if (game.mode !== 'gameplay') {
-        panel[game.mode].selector.classList.remove('control-selector-selected');
-        panel.gameplay.selector.classList.add('control-selector-selected');
-        game.mode = 'gameplay';
-        window.requestAnimationFrame(gameplay);
-      }
-    });
-
+    
+    //  (macro function)
     function basicPanelHandler(a) {
       if (panel[a].container.classList.contains('hide')) {
         hideAllPanels();
@@ -903,6 +899,17 @@ var SG = (function(){
         return false;
       }
     }
+    
+    //  Controls - selectors
+    panel.gameplay.selector.addEventListener('click',function() {
+      hideAllPanels();
+      if (game.mode !== 'gameplay') {
+        panel[game.mode].selector.classList.remove('control-selector-selected');
+        panel.gameplay.selector.classList.add('control-selector-selected');
+        game.mode = 'gameplay';
+        window.requestAnimationFrame(gameplay);
+      }
+    });
     panel.belt.selector.addEventListener('click',function(){
       if (basicPanelHandler('belt')) ;
     });
@@ -920,10 +927,28 @@ var SG = (function(){
         seeds.forEach(function(seed){
           var clone = Create.clone('growth',seed);
           var html =
-            '<img class="store-image" src="'+'">'+
-            '<span class="store-commonName">'+clone.commonName+'</span><br>'+
-            '<span class="store-bN">'+clone.binomialNomenclature+'</span>';
-          DOM.build('div',panel.store.inventory,html,null,null);
+            '<img class="store-seed-image" src="images/growths/'+(seed).toLowerCase()+'_1.png">'+
+            '<div class="store-seed-text">'+clone.commonName+'<br><i>'+clone.binomialNomenclature+'</i></div>'+
+            '<div class="store-seed-purchase"><span class="store-purchase-quantity">1</span>'+
+            '<span class="store-purchase-incrementer"><div class="store-purchase-quantityIncrease"></div>'+
+            '<div class="store-purchase-quantityDecrease"></div></span>'+
+            '<span id="purchase-seed-'+seed+'" class="store-purchase-button">PURCHASE</span></div>';
+          var _seedElement = DOM.build('div',panel.store.inventory,html,null,'store-seed');
+          document.getElementById('purchase-seed-'+seed).addEventListener('click',function(event){
+            var player = entities[game.playerUID];
+            var i = player.seeds.length-1;
+            var searching = true;
+            while (searching) {
+              if (player.seeds[i].growth === seed) {
+                if (clone.cost < player.money) {
+                  player.money -= clone.cost;
+                  player.seeds[i].quantity += 1;
+                }
+                searching = false;
+              }
+              else i -= 1;
+            }
+          });
         });
       }
     });
@@ -941,8 +966,6 @@ var SG = (function(){
       }
       else panel.items.container.classList.add('hide');
     });
-    
-    Input.init();
 
     //  Make fake world for now...
     var _player = Create.player(0,0);
@@ -952,15 +975,16 @@ var SG = (function(){
     for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
     for (_i_1 = 200; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
 
-      //DEBUG
-
+    //DEBUG
 //     window.addEventListener('mousemove',function(e){
 //       var xy = Input.mouseToXY(e);
 //       var _uidArray = SpatialHash.retrieve(xy[0],xy[1]);
 //       debug.innerHTML = e.clientX+'x '+e.clientY+'y --> '+xy[0]+' '+xy[1]+' => '+_uidArray;
 //     });
     
-    
+    changeActionMode('move'); // set starting `actionMode`
+    Input.init(); // start listening for keyboard input
+    game.mode='gameplay'; // so the loop happens
     window.requestAnimationFrame(gameplay);
   }
 
