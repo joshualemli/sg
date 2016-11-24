@@ -20,7 +20,8 @@ var SG = (function(){
     mobiledevice:{},
     store:{},
     actions:{},
-    items:{},
+    seeds:{},
+    constructables:{}
   };
   //  SUB-MODULES
   var gameplay; // primary gameplay loop function
@@ -139,7 +140,7 @@ var SG = (function(){
   };
 
   function hideAllPanels() {
-    ['belt','backpack','mobiledevice','store','actions','items'].forEach(function(item) {
+    ['belt','backpack','mobiledevice','store','actions','seeds','constructables'].forEach(function(item) {
       if (!panel[item].container.classList.contains('hide')) panel[item].container.classList.add('hide');
     });
   }
@@ -154,17 +155,17 @@ var SG = (function(){
     var player = entities[game.playerUID];
     
   }
-  function buildItems() {
-    DOM.empty(panel.items.container);
-    var _items = [];
+  function buildSeeds() {
+    DOM.empty(panel.seeds.container);
     if (game.actionMode==='plant') {
-      _items = entities[game.playerUID].seeds;
-      _items.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
-      _items.forEach(function(item){
-        var _id = 'items-seed-'+item.growth;
-        DOM.build('div',panel.items.container,item.growth+' - '+item.quantity,_id,null);
+      var _seeds = [];
+      _seeds = entities[game.playerUID].seeds;
+      _seeds.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
+      _seeds.forEach(function(seed){
+        var _id = 'seeds-seed-'+seed.growth;
+        DOM.build('div',panel.seeds.container,seed.growth+' - '+seed.quantity,_id,null);
         document.getElementById(_id).addEventListener('click',function(e){
-          game.seedSelection = item.growth;
+          game.seedSelection = seed.growth;
         });
       });
     }
@@ -580,7 +581,7 @@ var SG = (function(){
           this.trimQueue('growth',_seed.growth);
           this.seeds.slice(_index,1);
         }
-        buildItems();
+        buildSeeds();
         return true;
       }
       else return false;
@@ -599,11 +600,11 @@ var SG = (function(){
         task.y = entities[task.uid].y;
         return false;
       }
-    }
+    };
     Player.prototype.harvest = function(task) {
       if (!this.setTargetUID(task.uid)) {
         var target = entities[task.uid];
-        entities[game.playerUID].money += target.value*target.radius/target.maxRadius;
+        entities[game.playerUID].money += target.value*target.radius*target.radius/(target.maxRadius*target.maxRadius);
         SpatialHash.remove(target.x,target.y,target.uid);
         delete entities[task.uid];
         console.log(entities[game.playerUID].money);
@@ -739,6 +740,7 @@ var SG = (function(){
       cost: 0.1,
       growthRate: 7e-5
     });
+    EntityImage.call(Growth.Rhubarb,'growths','rhubarb_1.png');
     
     Growth.GreenBeans = function() {
       Growth._Growth.call(this);
@@ -751,6 +753,8 @@ var SG = (function(){
       cost: 0.15,
       growthRate: 8e-5
     });
+    EntityImage.call(Growth.GreenBeans,'growths','greenbeans_1.png');
+
 
     //  ***  "INSTANCES"  ***  //
 
@@ -838,14 +842,16 @@ var SG = (function(){
     panel.mobiledevice.selector = document.getElementById('selectMobiledevice');
     panel.store.selector = document.getElementById('selectStore');
     panel.actions.selector = document.getElementById('selectAction');
-    panel.items.selector = document.getElementById('selectItem');
+    panel.seeds.selector = document.getElementById('selectSeed');
+    panel.constructables.selector = document.getElementById('selectConstructable');
 
     panel.belt.container = document.getElementById('belt');
     panel.backpack.container = document.getElementById('backpack');
     panel.mobiledevice.container = document.getElementById('mobiledevice');
     panel.store.container = document.getElementById('store');
     panel.actions.container = document.getElementById('actions');
-    panel.items.container = document.getElementById('items');
+    panel.seeds.container = document.getElementById('seeds');
+    panel.constructables.container = document.getElementById('constructables');
     hideAllPanels();
 
     panel.mobiledevice.clock = document.getElementById('md-clock');
@@ -923,7 +929,7 @@ var SG = (function(){
       if (basicPanelHandler('store')) {
         panel.store.playersMoney.innerHTML = '$'+(Math.floor(entities[game.playerUID].money*100)/100).toFixed(2);
         DOM.empty(panel.store.inventory);
-        var seeds = ['Dandelion','Parsley'];
+        var seeds = ['Dandelion','Parsley','Rhubarb','GreenBeans'];
         seeds.forEach(function(seed){
           var clone = Create.clone('growth',seed);
           var html =
@@ -959,21 +965,23 @@ var SG = (function(){
       }
       else panel.actions.container.classList.add('hide');
     });
-    panel.items.selector.addEventListener('click',function() {
-      if (panel.items.container.classList.contains('hide')) {
-        buildItems();
-        panel.items.container.classList.remove('hide');
+    panel.seeds.selector.addEventListener('click',function() {
+      if (panel.seeds.container.classList.contains('hide')) {
+        buildSeeds();
+        panel.seeds.container.classList.remove('hide');
       }
-      else panel.items.container.classList.add('hide');
+      else panel.seeds.container.classList.add('hide');
     });
 
     //  Make fake world for now...
     var _player = Create.player(0,0);
-    _player.seeds.push(Create.seed({growth:'Parsley',quantity:25}));
-    _player.seeds.push(Create.seed({growth:'Dandelion',quantity:25}));
-    for (var _i_1 = 60; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
-    for (_i_1 = 200; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
-    for (_i_1 = 200; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
+    _player.seeds.push(Create.seed({growth:'Parsley',quantity:2}));
+    _player.seeds.push(Create.seed({growth:'Dandelion',quantity:2}));
+    _player.seeds.push(Create.seed({growth:'Rhubarb',quantity:2}));
+    _player.seeds.push(Create.seed({growth:'GreenBeans',quantity:2}));
+    for (var _i_1 = 1; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
+    for (_i_1 = 2; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
+    for (_i_1 = 2; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
 
     //DEBUG
 //     window.addEventListener('mousemove',function(e){
