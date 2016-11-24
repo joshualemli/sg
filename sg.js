@@ -184,9 +184,12 @@ var SG = (function(){
         '</div><div class="store-seed-purchase">'+
         '<span id="store-seed-quant-'+seed+'" class="store-purchase-quantity">1</span>'+
         '<span class="store-purchase-incrementer"><div class="store-purchase-quantityIncrease" onclick="'+
-        "var i=document.getElementById('store-seed-quant-"+seed+"');i.innerHTML=parseInt(i.innerHTML)+1;"+'"></div>'+
-        '<div class="store-purchase-quantityDecrease" onclick="'+
-        "var i=document.getElementById('store-seed-quant-"+seed+"');i.innerHTML=(parseInt(i.innerHTML)-1)||1;"+'"></div></span>'+
+        "var i=document.getElementById('store-seed-quant-"+seed+"');i.innerHTML=parseInt(i.innerHTML)+1;"+
+        'document.getElementById(`purchase-seed-cost-'+seed+'`).innerHTML=(parseInt(i.innerHTML)*'+clone.cost+').toFixed(2);"></div>'+
+        '<div class="store-purchase-quantSep"></div><div class="store-purchase-quantityDecrease" onclick="'+
+        "var i=document.getElementById(`store-seed-quant-"+seed+"`);i.innerHTML=(parseInt(i.innerHTML)-1)||1;"+
+        'document.getElementById(`purchase-seed-cost-'+seed+'`).innerHTML=(parseInt(i.innerHTML)*'+clone.cost+').toFixed(2);"></div></span>'+
+        '<span class="purchase-seed-total">total: $<span id="purchase-seed-cost-'+seed+'">'+clone.cost+'</span></span>'+
         '<span id="purchase-seed-'+seed+'" class="store-purchase-button">PURCHASE</span></div>';
       var _seedElement = DOM.build('div',panel.store.inventory,html,null,'store-seed');
       document.getElementById('purchase-seed-'+seed).addEventListener('click',function(event){
