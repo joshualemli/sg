@@ -147,7 +147,7 @@ var SG = (function(){
   function changeActionMode(a) {
     if (panel.actions[game.actionMode]) panel.actions[game.actionMode].classList.remove('action-selected');
     panel.actions[a].classList.add('action-selected');
-    if (a==='move') panel.actions.selector.style.background = 'url("images/wearable/sneakers_1.png") no-repeat center/26px';
+    if (a==='move') panel.actions.selector.style.background = 'url("images/wearable/sneakers_1.png") no-repeat center/40px';
     else panel.actions.selector.style.background = null;
     game.actionMode = a;
   }
@@ -157,18 +157,62 @@ var SG = (function(){
   }
   function buildSeeds() {
     DOM.empty(panel.seeds.container);
-    if (game.actionMode==='plant') {
-      var _seeds = [];
-      _seeds = entities[game.playerUID].seeds;
-      _seeds.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
-      _seeds.forEach(function(seed){
-        var _id = 'seeds-seed-'+seed.growth;
-        DOM.build('div',panel.seeds.container,seed.growth+' - '+seed.quantity,_id,null);
-        document.getElementById(_id).addEventListener('click',function(e){
-          game.seedSelection = seed.growth;
-        });
+    var _seeds = [];
+    _seeds = entities[game.playerUID].seeds;
+    _seeds.sort(function(a,b){return a.plantInfo.cost > b.plantInfo.cost ? 1 : a.plantInfo.cost < b.plantInfo.cost ? -1 : 0;});
+    _seeds.forEach(function(seed){
+      var _id = 'seeds-seed-'+seed.growth;
+      DOM.build('div',panel.seeds.container,seed.growth+' - '+seed.quantity,_id,'seeds-seed'+(seed.growth===game.seedSelection?' seeds-seed-selected':''));
+      document.getElementById(_id).addEventListener('click',function(e){
+        var _selected = document.getElementById('seeds-seed-'+game.seedSelection);
+        if (_selected) _selected.classList.remove('seeds-seed-selected');
+        this.classList.add('seeds-seed-selected');
+        game.seedSelection = seed.growth;
       });
-    }
+    });
+  }
+  function buildStoreSeeds() {
+    var seeds = ['Dandelion','Parsley','Rhubarb','GreenBeans'];
+    var player = entities[game.playerUID];
+    seeds.forEach(function(seed){
+      var clone = Create.clone('growth',seed);
+      var html =
+        '<img class="store-seed-image flipVertical" src="images/growths/'+(seed).toLowerCase()+'_1.png">'+
+        '<div id="store-seed-owned-'+seed+'" class="store-seed-owned"></div>'+
+        '<div class="store-seed-text">'+clone.commonName+'<br><i>'+clone.binomialNomenclature+'</i><br>'+
+        '<span class="store-seed-cost">Cost per seed: $'+clone.cost.toFixed(2)+'</span>'+
+        '</div><div class="store-seed-purchase">'+
+        '<span id="store-seed-quant-'+seed+'" class="store-purchase-quantity">1</span>'+
+        '<span class="store-purchase-incrementer"><div class="store-purchase-quantityIncrease" onclick="'+
+        "var i=document.getElementById('store-seed-quant-"+seed+"');i.innerHTML=parseInt(i.innerHTML)+1;"+'"></div>'+
+        '<div class="store-purchase-quantityDecrease" onclick="'+
+        "var i=document.getElementById('store-seed-quant-"+seed+"');i.innerHTML=(parseInt(i.innerHTML)-1)||1;"+'"></div></span>'+
+        '<span id="purchase-seed-'+seed+'" class="store-purchase-button">PURCHASE</span></div>';
+      var _seedElement = DOM.build('div',panel.store.inventory,html,null,'store-seed');
+      document.getElementById('purchase-seed-'+seed).addEventListener('click',function(event){
+        var i = player.seeds.length-1;
+        var searching = true;
+        while (searching) {
+          if (player.seeds[i].growth === seed) {
+            searching = false;
+            var qElem = document.getElementById('store-seed-quant-'+seed);
+            var purchaseQuantity = parseInt(qElem.innerHTML);
+            if (purchaseQuantity*clone.cost > player.money) {
+              purchaseQuantity = Math.floor(player.money/clone.cost);
+              qElem.innerHTML = purchaseQuantity;
+            }
+            player.money -= clone.cost*purchaseQuantity;
+            player.seeds[i].quantity += purchaseQuantity;
+            panel.store.playersMoney.innerHTML = '$'+player.money.toFixed(2);
+            document.getElementById('store-seed-owned-'+seed).innerHTML = player.seeds[i].quantity;
+          }
+          else i -= 1;
+        }
+      });
+    });
+    player.seeds.forEach(function(_seed){
+      document.getElementById('store-seed-owned-'+_seed.growth).innerHTML = _seed.quantity;
+    });
   }
 
   gameplay = function(_t) {
@@ -484,7 +528,7 @@ var SG = (function(){
       };
       this.level = 1;
       this.radius = 7;
-      this.money = 0;
+      this.money = 10;
       this.belt = {
         slotCount:3,
         inspect:[],
@@ -905,7 +949,7 @@ var SG = (function(){
         return false;
       }
     }
-    
+
     //  Controls - selectors
     panel.gameplay.selector.addEventListener('click',function() {
       hideAllPanels();
@@ -929,56 +973,41 @@ var SG = (function(){
       if (basicPanelHandler('store')) {
         panel.store.playersMoney.innerHTML = '$'+(Math.floor(entities[game.playerUID].money*100)/100).toFixed(2);
         DOM.empty(panel.store.inventory);
-        var seeds = ['Dandelion','Parsley','Rhubarb','GreenBeans'];
-        seeds.forEach(function(seed){
-          var clone = Create.clone('growth',seed);
-          var html =
-            '<img class="store-seed-image" src="images/growths/'+(seed).toLowerCase()+'_1.png">'+
-            '<div class="store-seed-text">'+clone.commonName+'<br><i>'+clone.binomialNomenclature+'</i></div>'+
-            '<div class="store-seed-purchase"><span class="store-purchase-quantity">1</span>'+
-            '<span class="store-purchase-incrementer"><div class="store-purchase-quantityIncrease"></div>'+
-            '<div class="store-purchase-quantityDecrease"></div></span>'+
-            '<span id="purchase-seed-'+seed+'" class="store-purchase-button">PURCHASE</span></div>';
-          var _seedElement = DOM.build('div',panel.store.inventory,html,null,'store-seed');
-          document.getElementById('purchase-seed-'+seed).addEventListener('click',function(event){
-            var player = entities[game.playerUID];
-            var i = player.seeds.length-1;
-            var searching = true;
-            while (searching) {
-              if (player.seeds[i].growth === seed) {
-                if (clone.cost < player.money) {
-                  player.money -= clone.cost;
-                  player.seeds[i].quantity += 1;
-                }
-                searching = false;
-              }
-              else i -= 1;
-            }
-          });
-        });
+        buildStoreSeeds();
       }
     });
-    panel.actions.selector.addEventListener('click',function() {
-      if (panel.actions.container.classList.contains('hide')) {
-        buildActions();
-        panel.actions.container.classList.remove('hide');
+    function selectorActionsOrItems(target) {
+      if (!panel[target].selector.classList.contains('opaque')) {
+        ['actions','seeds','constructables'].forEach(function(a){
+          if (!panel[a].container.classList.contains('hide')) panel[a].container.classList.add('hide');
+          panel[a].selector.classList.remove('opaque');
+        });
+        panel[target].selector.classList.add('opaque');
+        panel[target].container.classList.remove('hide');
       }
-      else panel.actions.container.classList.add('hide');
+      else {
+        panel[target].selector.classList.remove('opaque');
+        panel[target].container.classList.add('hide');
+      }
+    }
+    panel.actions.selector.addEventListener('click',function() {
+      selectorActionsOrItems('actions');
+      buildActions();
     });
     panel.seeds.selector.addEventListener('click',function() {
-      if (panel.seeds.container.classList.contains('hide')) {
-        buildSeeds();
-        panel.seeds.container.classList.remove('hide');
-      }
-      else panel.seeds.container.classList.add('hide');
+      selectorActionsOrItems('seeds');
+      buildSeeds();
     });
-
+    panel.constructables.selector.addEventListener('click',function() {
+      selectorActionsOrItems('constructables');
+      //buildConstructables();
+    });
     //  Make fake world for now...
     var _player = Create.player(0,0);
-    _player.seeds.push(Create.seed({growth:'Parsley',quantity:2}));
     _player.seeds.push(Create.seed({growth:'Dandelion',quantity:2}));
-    _player.seeds.push(Create.seed({growth:'Rhubarb',quantity:2}));
-    _player.seeds.push(Create.seed({growth:'GreenBeans',quantity:2}));
+    _player.seeds.push(Create.seed({growth:'Parsley',quantity:2}));
+    _player.seeds.push(Create.seed({growth:'Rhubarb',quantity:1}));
+    _player.seeds.push(Create.seed({growth:'GreenBeans',quantity:1}));
     for (var _i_1 = 1; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
     for (_i_1 = 2; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
     for (_i_1 = 2; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
@@ -989,10 +1018,10 @@ var SG = (function(){
 //       var _uidArray = SpatialHash.retrieve(xy[0],xy[1]);
 //       debug.innerHTML = e.clientX+'x '+e.clientY+'y --> '+xy[0]+' '+xy[1]+' => '+_uidArray;
 //     });
-    
+    game.mode='gameplay'; // so the loop happens
+    panel[game.mode].selector.classList.add('control-selector-selected');
     changeActionMode('move'); // set starting `actionMode`
     Input.init(); // start listening for keyboard input
-    game.mode='gameplay'; // so the loop happens
     window.requestAnimationFrame(gameplay);
   }
 

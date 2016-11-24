@@ -14,11 +14,11 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
 #controls {
   z-index:30; display:inline-block;
   position:absolute; top:0; left:0;
-  height:50px;
+  height:60px;
 }
   .control-item {
     z-index:32; float:left;
-    width:50px; height:50px;
+    width:60px; height:60px;
     transition:0.1s linear;
     opacity:0.4;
   }
@@ -26,45 +26,47 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
     opacity:1;
   }
   #selectGameplay {
-    width:60px;
+    width:72px;
     background:url('images/controls/sg_60x39.png') no-repeat center;
   }
   #selectBelt {
-    background:url('images/controls/belt_1.png') no-repeat center/40px;
+    background:url('images/controls/belt_1.png') no-repeat center/54px;
   }
   #selectBackpack {
-    background:url('images/controls/backpack_1.png') no-repeat center/46px;
+    background:url('images/controls/backpack_1.png') no-repeat center/48px;
   }
   #selectMobiledevice {
-    background:url('images/controls/mobiledevice_1.png') no-repeat center/46px;
+    width:50px;
+    background:url('images/controls/mobiledevice_1.png') no-repeat center/50px;
   }
   #selectStore {
-    background:url('images/controls/mercantile.png') no-repeat center;
+    background:url('images/controls/mercantile.png') no-repeat center/54px;
   }
   #selectAction {
-    width:36px; height:36px; margin:4px;
+    width:50px; height:50px; margin:2px 4px;
     border:3px solid #39F;
     border-radius:50%;
   }
   #selectSeed {
-    width:32px; height:32px; margin:7px;
+    width:40px; height:40px; margin:6px;
     border:2px solid #3A5;
     border-radius:50%;
   }
   #selectConstructable {
-    width:32px; height:32px; margin:7px;
+    width:40px; height:40px; margin:6px 2px;
     border:2px solid #A72;
     border-radius:50%;
   }
   .control-selector-selected {
     opacity:1;
-    box-shadow:1px 1px 3px 0 inset #FFF;
+    border-radius:50%;
+    box-shadow:inset 0px 0px 3px #FFF;
   }
 
 .equipment {
   z-index:20;
-  position:absolute; top:50px; left:50px;
-  width:calc(100% - 100px); height:calc(100% - 100px);
+  position:absolute; top:70px; left:20px;
+  width:calc(100% - 40px); height:calc(100% - 90px);
 }
 #belt {
   background:rgba(75,30,10,0.5);
@@ -87,9 +89,6 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
   }
   #md-options {
   }
-#store {
-  background:rgba(100,0,0,0.5);
-}
 #actions {
   z-index:50;
   position:absolute; top:50px; left:235px;
@@ -116,8 +115,15 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
   z-index:50;
   position:absolute; top:50px; left:300px;
   width:250px;
-  background:rgba(255,255,255,0.5);
+  background:rgba(0,0,0,0.5);
 }
+  .seeds-seed {
+    color:#FFF;
+  }
+  .seeds-seed-selected {
+    color:#2E5;
+    font-weight:bold;
+  }
 #constructables {
   z-index:50;
   position:absolute; top:50px; left:500px;
@@ -125,29 +131,45 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
   background:rgba(255,255,255,0.5);
 }
 
-#store {}
-.store-seed {
-  width:220px; height:70px; float:left;
-  margin:8px; padding:8px;
-  background-color:rgba(100,140,100,0.2);
-  border:1px solid rgba(40,120,10,0.3);
-  color:#BBB;
+#store {
+  z-index:50;
+  background:rgba(100,0,0,0.5);
 }
-.store-seed:hover {
-  background-color:rgba(60,60,60,0.6);
-  border-color:rgba(50,160,20,0.6);
-  color:#DFD;
-}
-.store-seed:hover .store-seed-image {
-  border-color:#AFA;
-}
+  #store-playersMoney {
+    color:#AFA;
+    font-size:20px;
+  }
+  .store-seed {
+    position:relative;
+    width:220px; height:85px; float:left;
+    margin:8px; padding:8px;
+    background-color:rgba(100,140,100,0.2);
+    border:1px solid rgba(40,120,10,0.3);
+    color:#BBB;
+  }
+  .store-seed:hover {
+    background-color:rgba(60,60,60,0.6);
+    border-color:rgba(50,160,20,0.6);
+    color:#DFD;
+  }
+  .store-seed:hover .store-seed-image {
+    border-color:#AFA;
+  }
   .store-seed-image {
     display:block; float:right;
     padding:2px;
     border:1px solid #777;
     border-radius:3px;
-    box-shadow:1px 2px 4px 0 #000;
+    box-shadow:1px -2px 4px 0 #000;
     background-color:rgba(0,0,0,0.2);
+  }
+  .store-seed-owned {
+    z-index:52;
+    position:absolute; top:10px; right:10px;
+    color:#0E8;
+  }
+  .store-seed-cost {
+    font-size:12px;
   }
   .store-seed-text {
     float:left;
@@ -184,6 +206,9 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
     font-size:12px;
     cursor:pointer;
   }
+  .store-purchase-button:active {
+    background:#339;
+  }
   .store-purchase-button:hover {
     border-color:#FFF;
   }
@@ -192,6 +217,21 @@ html,body {width:100%;height:100%;margin:0;padding:0;border:0;background:#000;us
   z-index:1;
   position:absolute; top:0; left:0;
   width:100%; height:100%;
+}
+
+
+/* "Super" Macros */
+
+.flipVertical {
+  transform: scaleY(-1);
+}
+
+.transparent {
+  opacity:0;
+}
+
+.opaque {
+  opacity:1;
 }
 
 .hide {
