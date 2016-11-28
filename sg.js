@@ -261,6 +261,7 @@ var SG = (function(){
     drawBins.sky.forEach(function(uid){_entities.push(uid);});
     _entities.forEach(function(uid) {
       var target = entities[uid];
+      if (!target) return;
       if (1){ //is in view?
         if (target.image) {
           var _offset = target.radius;
@@ -729,6 +730,40 @@ var SG = (function(){
     Name.call(Creature.Dog,'Dog','Canus lupus familiaris');
     EntityImage.call(Creature.Dog,'creatures','dog_1.png');
 
+    Creature.AutoharvesterMk1 = function() {
+      Creature._Creature.call(this);
+      this.target = null;
+      this.speed = 0.5;
+      this.radius = 10;
+    };
+    Extend.call(Creature.AutoharvesterMk1,Creature._Creature);
+    EntityImage.call(Creature.AutoharvesterMk1,'creatures','autoharvester_1.png');
+    Creature.AutoharvesterMk1.prototype.step = function() {
+      if (this.target !== null) {
+        var flag = false;
+        if (this.target.x > this.x+this.radius) this.x += this.speed;
+        else if (this.target.x < this.x-this.radius) this.x -= this.speed;
+        else flag = true;
+        if (this.target.y > this.y+this.radius) this.y += this.speed;
+        else if (this.target.y < this.y-this.radius) this.y -= this.speed;
+        else if (flag === true) {
+          entities[game.playerUID].money += this.target.value;
+          SpatialHash.remove(this.target.x,this.target.y,this.target.uid);
+          delete entities[this.target.uid];
+          this.target = null;
+        }
+      }
+      else {
+        var keys = Object.keys(entities);
+        var pick = game.playerUID;
+        while (pick === game.playerUID) {
+          var i = rI(0,keys.length-1);
+          pick = keys[i];
+        }
+        this.target = entities[pick];console.log(this.target);
+      }
+    };
+
     //  Labrador, Mutt, etc...    
     //  Horses
     //  Llamas
@@ -1012,8 +1047,9 @@ var SG = (function(){
     _player.seeds.push(Create.seed({growth:'Rhubarb',quantity:1}));
     _player.seeds.push(Create.seed({growth:'GreenBeans',quantity:1}));
     for (var _i_1 = 1; _i_1--;) Create.creature('Dog',rI(-400,400),rI(-200,200));
-    for (_i_1 = 2; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
-    for (_i_1 = 2; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
+    for (_i_1 = 20; _i_1--;) Create.growth('Parsley',rI(-400,400),rI(-200,200));
+    for (_i_1 = 20; _i_1--;) Create.growth('Dandelion',rI(-400,400),rI(-200,200));
+    for (_i_1 = 1; _i_1--;) Create.creature('AutoharvesterMk1',rI(-400,400),rI(-200,200));
 
     //DEBUG
 //     window.addEventListener('mousemove',function(e){
