@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html>
+<!--    'sg' project v4 ALPHA
+           Joshua A. Lemli
+             Nov 2016            -->
   <head>
+    <meta charset="utf-8">
     <title>sg</title>
     <link rel='stylesheet' type='text/css' href='sg.css'>
     <script src='sg.js'></script>
@@ -9,30 +13,57 @@
     <div id='info'></div>
     <div id='debug'></div>
     <div id='controls'>
-      <div id='selectGameplay' class='control-item'>sg</div>
-      <div id='selectBelt' class='control-item'>belt</div>
-      <div id='selectBackpack' class='control-item'>bp</div>
-      <div id='selectMobiledevice' class='control-item'>cell</div>
-      <div id='selectStore' class='control-item'>$</div>
-      <div id='selectAction' class='control-item'>action</div>
-      <div id='selectItem' class='control-item'>item</div>
+      <div id='selectGameplay' class='control-item'></div>
+      <div id='selectBelt' class='control-item'></div>
+      <div id='selectBackpack' class='control-item'></div>
+      <div id='selectMobiledevice' class='control-item'></div>
+      <div id='selectStore' class='control-item'></div>
+      <div id='selectAction' class='control-item'></div>
+      <div id='selectSeed' class='control-item'></div>
+      <div id='selectConstructable' class='control-item'></div>
     </div>
-    <div id='belt' class='equipment'></div><!-- Belt -->
+    <div id='belt' class='equipment'><!-- Belt -->
+      <div id='belt-inspect' class='belt-slot'></div>
+      <div id='belt-plant' class='belt-slot'></div>
+      <div id='belt-harvest' class='belt-slot'></div>
+      <div id='belt-repel' class='belt-slot'></div>
+      <div id='belt-build' class='belt-slot'></div>
+    </div>
     <div id='backpack' class='equipment'><!-- Backpack -->
-      <div id='gear'></div>
-      <div id='seeds'></div>
+      <div id='backpack-seeds'></div>
+      <div id='backpack-constructables'></div>
+      <div id='backpack-equipment'>
+        <div id='backpack-equipment-inspect'></div>
+        <div id='backpack-equipment-plant'></div>
+        <div id='backpack-equipment-harvest'></div>
+        <div id='backpack-equipment-build'></div>
+        <div id='backpack-equipment-repel'></div>
+        <div id='backpack-equipment-wearable'></div>
+      </div>
     </div>
     <div id='mobiledevice' class='equipment'><!-- Mobile device -->
-      <div id='md_clock'></div>
-      <div id='md_sleep'></div>
-      <div id='md_money'></div>
-      <div id='md_saveGame'></div>
-      <div id='md_loadGame'></div>
-      <div id='md_options'></div>
+      <div id='md-clock'></div>
+      <div id='md-sleep'></div>
+      <div id='md-money'></div>
+      <div id='md-saveGame'></div>
+      <div id='md-loadGame'></div>
+      <div id='md-options'></div>
     </div>
-    <div id='store' class='equipment'></div><!-- Store -->
-    <div id='actions'></div>
-    <div id='items'></div>
+    <div id='store' class='equipment'><!-- Store -->
+      <div id='store-playersMoney'></div>
+      <div id='store-categorySelect'></div>
+      <div id='store-inventory'></div>
+    </div><!-- Store -->
+    <div id='actions'>
+      <div id='action-move' class='action-mode'>MOVE</div>
+      <div id='action-inspect' class='action-mode'>INSPECT</div>
+      <div id='action-plant' class='action-mode'>PLANT</div>
+      <div id='action-harvest' class='action-mode'>HARVEST</div>
+      <div id='action-build' class='action-mode'>BUILD</div>
+      <div id='action-repel' class='action-mode'>REPEL</div>
+    </div>
+    <div id='seeds'></div>
+    <div id='constructables'></div>
     <canvas id='canvas'></canvas>
   </body>
 </html>
